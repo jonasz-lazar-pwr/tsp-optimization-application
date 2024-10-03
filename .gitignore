@@ -1,7 +1,7 @@
 # Exckuding C++ build directories
 cmake-build-release/
 cmake-build-debug/
-complied_binaries/
+compiled_binaries/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
