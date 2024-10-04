@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from src.utils.interfaces.tsp_file_interface import TSPFileInterface
+from src.backend.components.tsplib_management.tsp_file import TSPFile
 
 
 class TSPCatalogInterface(ABC):
@@ -13,7 +13,7 @@ class TSPCatalogInterface(ABC):
         pass
 
     @abstractmethod
-    def get_file_by_name(self, name: str) -> Optional[TSPFileInterface]:
+    def get_file_by_name(self, name: str) -> Optional[TSPFile]:
         """Find a TSP file by its name."""
         pass
 
@@ -23,11 +23,11 @@ class TSPCatalogInterface(ABC):
         pass
 
     @abstractmethod
-    def filter_by_edge_weight_type(self, edge_weight_type: str) -> List[TSPFileInterface]:
+    def filter_by_edge_weight_type(self, edge_weight_type: str) -> List[TSPFile]:
         """Filter files by the edge weight type."""
         pass
 
     @abstractmethod
-    def load_distance_matrix_for_file(self, name: str) -> Optional[TSPFileInterface]:
+    def load_distance_matrix_for_file(self, name: str) -> Optional[TSPFile]:
         """Load the distance matrix for a specific file by its name."""
         pass

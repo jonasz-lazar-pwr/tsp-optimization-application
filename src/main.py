@@ -14,14 +14,14 @@ def main():
     # Inicjalizacja QApplication
     app = QApplication(sys.argv)
 
-    # Inicjalizacja Backend
-    backend = TaskManager()
+    # Inicjalizacja TaskManager
+    task_manager = TaskManager()
 
-    # Inicjalizacja GUI i wstrzyknięcie backendu
-    gui = MainWindow(backend)
+    # Inicjalizacja GUI z podłączonym TaskManagerem
+    main_window = MainWindow(task_manager)
 
     # Uruchomienie GUI
-    gui.show()
+    main_window.show()
 
     # Uruchomienie głównej pętli zdarzeń aplikacji
     sys.exit(app.exec())

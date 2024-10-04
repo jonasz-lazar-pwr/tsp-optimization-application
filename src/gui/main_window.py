@@ -1,6 +1,6 @@
 # src/gui/main_window.py
 
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget, QComboBox
 from src.backend.task_manager import TaskManager
 
 
@@ -14,11 +14,20 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("TSP Optimization Application")
 
-        # Inject the TaskManager instance
+        # Inicjalizacja TaskManager
         self.task_manager = task_manager
+
+        # Podłączenie sygnałów TaskManagera do aktualizacji GUI
+        self.task_manager.solution_signal.connect(self.update_current_solution)
+        self.task_manager.result_signal.connect(self.update_result)
 
         # Layout setup
         layout = QVBoxLayout()
+
+        # Dodaj QComboBox do wyboru pliku TSP
+        self.file_selector = QComboBox()
+        self.file_selector.currentIndexChanged.connect(self.on_file_selection_change)
+        layout.addWidget(self.file_selector)
 
         # Button to run the Simulated Annealing algorithm
         self.run_button = QPushButton("Run Simulated Annealing")
@@ -42,24 +51,33 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-    def run_simulated_annealing(self) -> None:
-        """
-        Method for handling the execution of the Simulated Annealing algorithm.
-        """
-        temperature: float = 10000.0
-        iterations: int = 100000
-        distance_matrix: list[list[float]] = [
-            # ... (distance matrix here)
-        ]
-
-        # Start the algorithm in the background
-        self.task_manager.start_simulated_annealing(distance_matrix, temperature, iterations)
-
     def select_directory(self) -> None:
         """
         Method for handling directory selection for TSP files.
         """
         self.task_manager.select_tsp_directory()
+        self.update_file_selector()
+
+    def update_file_selector(self) -> None:
+        file_names = self.task_manager.get_loaded_file_names()
+        self.file_selector.clear()
+        self.file_selector.addItems(file_names)
+
+    def on_file_selection_change(self) -> None:
+        selected_file = self.file_selector.currentText()
+        print(f"Selected file: {selected_file}")  # Debug print
+
+    def run_simulated_annealing(self) -> None:
+        """
+        Method for handling the execution of the Simulated Annealing algorithm.
+        """
+        selected_file = self.file_selector.currentText()
+        if selected_file:
+            temperature = 10000.0
+            iterations = 100000
+            self.task_manager.start_simulated_annealing_for_file(selected_file, temperature, iterations)
+        else:
+            print("No file selected.")  # Debug print
 
     def update_current_solution(self, solution: list[float]) -> None:
         """

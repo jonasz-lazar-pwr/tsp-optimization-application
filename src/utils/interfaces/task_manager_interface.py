@@ -15,8 +15,8 @@ class TaskManagerInterface(ABC):
         pass
 
     @abstractmethod
-    def start_simulated_annealing(self, distance_matrix: list[list[float]], temperature: float, iterations: int) -> None:
-        """Starts the Simulated Annealing algorithm in a separate thread."""
+    def start_simulated_annealing_for_file(self, file_name: str, temperature: float, iterations: int) -> None:
+        """Starts the Simulated Annealing algorithm for a selected file in a separate thread."""
         pass
 
     @abstractmethod
