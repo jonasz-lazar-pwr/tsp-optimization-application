@@ -45,8 +45,10 @@ class TSPLIBParser(TSPLIBParserInterface):
 
             # Validate EDGE_WEIGHT_TYPE
             self.edge_weight_type = self.get_field_value("EDGE_WEIGHT_TYPE")
+            print(f"Set edge_weight_type to {self.edge_weight_type}")
             if self.edge_weight_type not in supported_types:
                 raise ValueError(f"Unsupported EDGE_WEIGHT_TYPE: {self.edge_weight_type}")
+            print(f"Finished validating file. edge_weight_type: {self.edge_weight_type}")
 
             # Fetch EDGE_WEIGHT_FORMAT if available
             self.edge_weight_format = self.get_field_value("EDGE_WEIGHT_FORMAT", optional=True)
@@ -101,16 +103,25 @@ class TSPLIBParser(TSPLIBParserInterface):
 
     def generate_distance_matrix(self) -> None:
         """Generate a distance matrix based on EDGE_WEIGHT_TYPE."""
+        print(f"Start generating distance matrix for {self.edge_weight_type}...")  # Dodaj log
         if self.edge_weight_type == "EUC_2D":
             self._calculate_euclidean_distance_2d()
+            print("EUC_2D distance matrix generated.")
         elif self.edge_weight_type == "CEIL_2D":
             self._calculate_ceil_euclidean_distance_2d()
+            print("CEIL_2D distance matrix generated.")
         elif self.edge_weight_type == "ATT":
             self._calculate_att_distance()
+            print("ATT distance matrix generated.")
         elif self.edge_weight_type == "GEO":
             self._calculate_geographical_distance()
+            print("GEO distance matrix generated.")
         elif self.edge_weight_type == "EXPLICIT":
             self._load_explicit_weights()
+            print("Explicit distance matrix loaded.")
+        else:
+            raise ValueError(f"Unsupported EDGE_WEIGHT_TYPE: {self.edge_weight_type}")
+        print(f"Finished generating distance matrix for {self.edge_weight_type}...")  # Dodaj log
 
     def _calculate_euclidean_distance_2d(self) -> None:
         """Calculate the Euclidean distance in 2D."""
@@ -127,6 +138,8 @@ class TSPLIBParser(TSPLIBParserInterface):
                 distance = int(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) + 0.5)
                 self.distance_matrix[i][j] = distance
                 self.distance_matrix[j][i] = distance  # Symmetric matrix
+
+        print(f"Distance matrix size: {len(self.distance_matrix)} x {len(self.distance_matrix[0])}")
 
         # Convert the entire matrix to integers
         self._convert_matrix_to_integers()
@@ -213,6 +226,11 @@ class TSPLIBParser(TSPLIBParserInterface):
             latitudes.append(to_radians(latitude))
             longitudes.append(to_radians(longitude))
 
+        # Debugging print for converted coordinates in radians
+        print("Converted coordinates in radians:")
+        for i, (lat, lon) in enumerate(zip(latitudes, longitudes)):
+            print(f"City {i + 1}: lat {lat}, lon {lon}")
+
         # Calculate the distances between cities
         for i in range(num_cities):
             for j in range(i + 1, num_cities):
@@ -224,8 +242,16 @@ class TSPLIBParser(TSPLIBParserInterface):
                 self.distance_matrix[i][j] = dij
                 self.distance_matrix[j][i] = dij  # Symetryczna macierz
 
+        print(f"Generated distance matrix for {len(self.distance_matrix)} cities)")
+
         # Convert the entire matrix to integers
         self._convert_matrix_to_integers()
+
+        # Debug print for matrix size and sample rows
+        print(f"Distance matrix size: {len(self.distance_matrix)} x {len(self.distance_matrix[0])}")
+        print("Sample from distance matrix:")
+        for row in self.distance_matrix[:5]:  # Print the first 5 rows as a sample
+            print(row)
 
     def _load_explicit_weights(self) -> None:
         """Load explicit edge weights based on the format."""

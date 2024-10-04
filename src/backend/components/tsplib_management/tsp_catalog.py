@@ -3,23 +3,20 @@
 import os
 from typing import Optional, List
 
-from src.utils.interfaces.tsp_catalog_interface import TSPCatalogInterface
-from src.utils.interfaces.tsp_file_interface import TSPFileInterface
-from src.backend.components.tsplib_management.tsp_file import TSPFile
 from src.backend.components.tsplib_management.tsplib_parser import TSPLIBParser
+from src.utils.interfaces.tsp_catalog_interface import TSPCatalogInterface
+from src.backend.components.tsplib_management.tsp_file import TSPFile
 
 
 class TSPCatalog(TSPCatalogInterface):
-    def __init__(self, optimal_results_path: str, parser: TSPLIBParser):
+    def __init__(self, optimal_results_path: str):
         """
         Constructor for the TSPCatalog class.
 
         :param optimal_results_path: Path to the JSON file containing optimal results for all problems.
-        :param parser: Injected TSPLIBParser instance used to parse .tsp files.
         """
         self.tsp_files = []  # List of TSPFile objects
         self.optimal_results_path = optimal_results_path
-        self.parser = parser # Injected parser
 
     def load_files(self, directory_path: str) -> None:
         """
@@ -31,7 +28,9 @@ class TSPCatalog(TSPCatalogInterface):
             if filename.endswith(".tsp"):
                 try:
                     file_path = os.path.join(directory_path, filename)
-                    tsp_file = TSPFile(file_path, self.optimal_results_path, self.parser)
+                    # Tworzenie nowego parsera dla każdego pliku
+                    parser = TSPLIBParser()
+                    tsp_file = TSPFile(file_path, self.optimal_results_path, parser)
                     tsp_file.load_metadata()  # Load only metadata
                     self.tsp_files.append(tsp_file)
                 except Exception as e:
@@ -48,7 +47,7 @@ class TSPCatalog(TSPCatalogInterface):
                 print(f"{key}: {value}")
             print("-" * 40)
 
-    def get_file_by_name(self, name: str) -> Optional[TSPFileInterface]:
+    def get_file_by_name(self, name: str) -> Optional[TSPFile]:
         """
         Find a TSP file by its name.
 
@@ -64,7 +63,7 @@ class TSPCatalog(TSPCatalogInterface):
         """Sort files by the number of cities (dimension)."""
         self.tsp_files.sort(key=lambda file: file.dimension)
 
-    def filter_by_edge_weight_type(self, edge_weight_type: str) -> List[TSPFileInterface]:
+    def filter_by_edge_weight_type(self, edge_weight_type: str) -> List[TSPFile]:
         """
         Filter files by the edge weight type.
 
@@ -73,7 +72,7 @@ class TSPCatalog(TSPCatalogInterface):
         """
         return [file for file in self.tsp_files if file.edge_weight_type == edge_weight_type]
 
-    def load_distance_matrix_for_file(self, name: str) -> Optional[TSPFileInterface]:
+    def load_distance_matrix_for_file(self, name: str) -> Optional[TSPFile]:
         """
         Load the distance matrix for a specific file by its name.
 

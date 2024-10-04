@@ -37,11 +37,13 @@ class TSPFile(TSPFileInterface):
         It loads the metadata and checks if the edge weight type is EXPLICIT.
         If it is, it will automatically load the distance matrix.
         """
+        print("Loading metadata...")
         self.parser.validate_file(self.file_path)
         self.name = self.parser.get_field_value("NAME")
         self.type = self.parser.get_field_value("TYPE")
         self.dimension = int(self.parser.get_field_value("DIMENSION"))
         self.edge_weight_type = self.parser.get_field_value("EDGE_WEIGHT_TYPE")
+        print(f"Metadata loaded with edge_weight_type: {self.edge_weight_type}")
         self.edge_weight_format = self.parser.get_field_value("EDGE_WEIGHT_FORMAT", optional=True)
         self.load_optimal_results()
 
@@ -51,6 +53,7 @@ class TSPFile(TSPFileInterface):
 
         if self.edge_weight_type == "EXPLICIT":
             self.load_distance_matrix()
+        print(f"Finished loading metadata for file {self.file_path}. edge_weight_type: {self.edge_weight_type}")
 
         display_data_type = self.parser.get_field_value("DISPLAY_DATA_TYPE", optional=True)
         if display_data_type == "TWOD_DISPLAY":
@@ -105,9 +108,13 @@ class TSPFile(TSPFileInterface):
         Load the distance matrix on demand.
         """
         if not self.has_loaded:
+            print(f"Generating distance matrix for {self.file_path} with type {self.edge_weight_type}")
             self.parser.generate_distance_matrix()
             self.distance_matrix = self.parser.get_distance_matrix()
+            print(f"Distance matrix generated with {len(self.distance_matrix)} cities.")
             self.has_loaded = True
+        else:
+            print("Distance matrix already loaded.")
 
     def get_distance_matrix(self) -> Optional[List[List[int]]]:
         """
@@ -128,6 +135,7 @@ class TSPFile(TSPFileInterface):
         :return: A dictionary with all relevant file information.
         """
         return {
+            'file_path': self.file_path,
             'name': self.name,
             'type': self.type,
             'dimension': self.dimension,
@@ -136,5 +144,7 @@ class TSPFile(TSPFileInterface):
             'optimal_length': self.optimal_result,
             'coordinates': self.coordinates,
             'display_coordinates': self.display_coordinates,
-            'distance_matrix': self.distance_matrix if self.has_loaded else None
+            'distance_matrix': self.distance_matrix if self.has_loaded else None,
+            'has_loaded': self.has_loaded,
+            'optimal_results_path': self.optimal_results_path,
         }
