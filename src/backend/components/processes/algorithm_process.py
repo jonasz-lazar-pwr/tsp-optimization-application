@@ -5,7 +5,7 @@ import pynng
 
 from typing import Optional
 from multiprocessing import Process, Queue, Barrier
-from src.interfaces.backend.components.processes import AlgorithmProcessInterface
+from src.interfaces.backend.components.processes.algorithm_process_interface import AlgorithmProcessInterface
 
 
 class AlgorithmProcess(AlgorithmProcessInterface):

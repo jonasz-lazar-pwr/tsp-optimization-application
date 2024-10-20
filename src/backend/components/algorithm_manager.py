@@ -3,7 +3,7 @@
 from typing import Optional, Type, Callable
 from multiprocessing import Queue, Process, Barrier
 from src.backend.components.processes.algorithm_process import AlgorithmProcess
-from src.interfaces.backend.components import AlgorithmManagerInterface
+from src.interfaces.backend.components.algorithm_manager_interface import AlgorithmManagerInterface
 
 
 class AlgorithmManager(AlgorithmManagerInterface):
