@@ -1,29 +1,34 @@
-# src/backend/components/tsplib_management/tsp_parser.py
+# src/backend/components/tsp_management/tsp_parser.py
 
-import os
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
-from src.utils.interfaces.tsplib_parser_interface import TSPLIBParserInterface
+from src.interfaces.backend.components.tsp_management.tsplib_parser_interface import TSPLIBParserInterface
 
 
 class TSPLIBParser(TSPLIBParserInterface):
-    def __init__(self):
-        """Constructor."""
-        self.file_path = None  # Path to the file
-        self.coordinates = []  # List of city coordinates
-        self.distance_matrix = []  # Distance matrix
-        self.edge_weight_type = None  # Distance type
-        self.edge_weight_format = None  # Distance format
-        self.content = None
+    def __init__(self) -> None:
+        """
+        Constructor for the TSPLIBParser class.
+
+        Initializes the parser with default values for file path, coordinates,
+        distance matrix, edge weight type, edge weight format, and file content.
+
+        :return: None
+        """
+        self.file_path: Optional[str] = None
+        self.coordinates: List[Tuple[float, float]] = []
+        self.distance_matrix: List[List[int]] = []
+        self.edge_weight_type: Optional[str] = None
+        self.edge_weight_format: Optional[str] = None
+        self.content: Optional[str] = None
 
     def validate_file(self, file_path: str) -> None:
         """
         Validate if the file exists and has the correct structure.
 
         :param file_path: Path to the .tsp file to validate.
-        :raises FileNotFoundError: If the file is not found.
-        :raises ValueError: If required fields are missing or EDGE_WEIGHT_TYPE is unsupported.
+        :return: None
         """
         self.file_path = file_path
         required_fields = ["NAME", "TYPE", "DIMENSION", "EDGE_WEIGHT_TYPE"]
@@ -45,10 +50,8 @@ class TSPLIBParser(TSPLIBParserInterface):
 
             # Validate EDGE_WEIGHT_TYPE
             self.edge_weight_type = self.get_field_value("EDGE_WEIGHT_TYPE")
-            print(f"Set edge_weight_type to {self.edge_weight_type}")
             if self.edge_weight_type not in supported_types:
                 raise ValueError(f"Unsupported EDGE_WEIGHT_TYPE: {self.edge_weight_type}")
-            print(f"Finished validating file. edge_weight_type: {self.edge_weight_type}")
 
             # Fetch EDGE_WEIGHT_FORMAT if available
             self.edge_weight_format = self.get_field_value("EDGE_WEIGHT_FORMAT", optional=True)
@@ -59,8 +62,6 @@ class TSPLIBParser(TSPLIBParserInterface):
             elif "NODE_COORD_SECTION" in self.content:
                 self._load_coordinates()
 
-            print(f"File {os.path.basename(file_path)} passed validation.")
-
         except FileNotFoundError:
             print(f"File {file_path} not found.")
             raise
@@ -69,7 +70,11 @@ class TSPLIBParser(TSPLIBParserInterface):
             raise
 
     def _load_coordinates(self) -> None:
-        """Load city coordinates from the NODE_COORD_SECTION."""
+        """
+        Load city coordinates from the NODE_COORD_SECTION.
+
+        :return: None
+        """
         self.coordinates = []
         in_node_coord_section = False
         for line in self.content.splitlines():
@@ -85,7 +90,11 @@ class TSPLIBParser(TSPLIBParserInterface):
                     self.coordinates.append((x, y))
 
     def load_display_coordinates(self) -> List[Tuple[float, float]]:
-        """Load coordinates from the DISPLAY_DATA_SECTION if it exists."""
+        """
+        Load coordinates from the DISPLAY_DATA_SECTION if it exists.
+
+        :return: A list of tuples, each representing (x, y) coordinates for the display.
+        """
         display_coordinates = []
         in_display_section = False
         for line in self.content.splitlines():
@@ -102,29 +111,30 @@ class TSPLIBParser(TSPLIBParserInterface):
         return display_coordinates
 
     def generate_distance_matrix(self) -> None:
-        """Generate a distance matrix based on EDGE_WEIGHT_TYPE."""
-        print(f"Start generating distance matrix for {self.edge_weight_type}...")  # Dodaj log
+        """
+        Generate a distance matrix based on EDGE_WEIGHT_TYPE.
+
+        :return: None
+        """
         if self.edge_weight_type == "EUC_2D":
             self._calculate_euclidean_distance_2d()
-            print("EUC_2D distance matrix generated.")
         elif self.edge_weight_type == "CEIL_2D":
             self._calculate_ceil_euclidean_distance_2d()
-            print("CEIL_2D distance matrix generated.")
         elif self.edge_weight_type == "ATT":
             self._calculate_att_distance()
-            print("ATT distance matrix generated.")
         elif self.edge_weight_type == "GEO":
             self._calculate_geographical_distance()
-            print("GEO distance matrix generated.")
         elif self.edge_weight_type == "EXPLICIT":
             self._load_explicit_weights()
-            print("Explicit distance matrix loaded.")
         else:
             raise ValueError(f"Unsupported EDGE_WEIGHT_TYPE: {self.edge_weight_type}")
-        print(f"Finished generating distance matrix for {self.edge_weight_type}...")  # Dodaj log
 
     def _calculate_euclidean_distance_2d(self) -> None:
-        """Calculate the Euclidean distance in 2D."""
+        """
+        Calculate the Euclidean distance between 2D coordinates.
+
+        :return: None
+        """
         if not self.coordinates:
             raise ValueError("Coordinates are required for EUC_2D distance calculation.")
 
@@ -139,13 +149,15 @@ class TSPLIBParser(TSPLIBParserInterface):
                 self.distance_matrix[i][j] = distance
                 self.distance_matrix[j][i] = distance  # Symmetric matrix
 
-        print(f"Distance matrix size: {len(self.distance_matrix)} x {len(self.distance_matrix[0])}")
-
         # Convert the entire matrix to integers
         self._convert_matrix_to_integers()
 
     def _calculate_ceil_euclidean_distance_2d(self) -> None:
-        """Calculate the Euclidean distance in 2D and round it up."""
+        """
+        Calculate the Euclidean distance between 2D coordinates and round it up.
+
+        :return: None
+        """
         if not self.coordinates:
             raise ValueError("Coordinates are required for CEIL_2D distance calculation.")
 
@@ -167,7 +179,11 @@ class TSPLIBParser(TSPLIBParserInterface):
         self._convert_matrix_to_integers()
 
     def _calculate_att_distance(self) -> None:
-        """Calculate the pseudo-Euclidean ATT distance."""
+        """
+        Calculate the pseudo-Euclidean ATT distance between coordinates.
+
+        :return: None
+        """
         if not self.coordinates:
             raise ValueError("Coordinates are required for ATT distance calculation.")
 
@@ -201,7 +217,11 @@ class TSPLIBParser(TSPLIBParserInterface):
         self._convert_matrix_to_integers()
 
     def _calculate_geographical_distance(self) -> None:
-        """Calculate geographical distances."""
+        """
+        Calculate the geographical distance between coordinates.
+
+        :return: None
+        """
         if not self.coordinates:
             raise ValueError("Coordinates are required for GEO distance calculation.")
 
@@ -226,11 +246,6 @@ class TSPLIBParser(TSPLIBParserInterface):
             latitudes.append(to_radians(latitude))
             longitudes.append(to_radians(longitude))
 
-        # Debugging print for converted coordinates in radians
-        print("Converted coordinates in radians:")
-        for i, (lat, lon) in enumerate(zip(latitudes, longitudes)):
-            print(f"City {i + 1}: lat {lat}, lon {lon}")
-
         # Calculate the distances between cities
         for i in range(num_cities):
             for j in range(i + 1, num_cities):
@@ -242,19 +257,15 @@ class TSPLIBParser(TSPLIBParserInterface):
                 self.distance_matrix[i][j] = dij
                 self.distance_matrix[j][i] = dij  # Symetryczna macierz
 
-        print(f"Generated distance matrix for {len(self.distance_matrix)} cities)")
-
         # Convert the entire matrix to integers
         self._convert_matrix_to_integers()
 
-        # Debug print for matrix size and sample rows
-        print(f"Distance matrix size: {len(self.distance_matrix)} x {len(self.distance_matrix[0])}")
-        print("Sample from distance matrix:")
-        for row in self.distance_matrix[:5]:  # Print the first 5 rows as a sample
-            print(row)
-
     def _load_explicit_weights(self) -> None:
-        """Load explicit edge weights based on the format."""
+        """
+        Load the explicit edge weights based on the format from the EDGE_WEIGHT_SECTION.
+
+        :return: None
+        """
         self.distance_matrix = []
         values = []
 
@@ -294,7 +305,13 @@ class TSPLIBParser(TSPLIBParserInterface):
         load_method.get(self.edge_weight_format, self._unsupported_format)()
 
     def _load_full_matrix(self, values: List[int], dimension: int) -> None:
-        """Load the full distance matrix."""
+        """
+        Load the full matrix of edge weights.
+
+        :param values: The distance values from the file.
+        :param dimension: The number of cities.
+        :return: None
+        """
         self.distance_matrix = [values[i * dimension:(i + 1) * dimension] for i in range(dimension)]
         self._convert_matrix_to_integers()
 
@@ -303,9 +320,10 @@ class TSPLIBParser(TSPLIBParserInterface):
         Load a triangular matrix, with or without the diagonal.
 
         :param values: The distance values from the file.
-        :param dimension: The number of cities (dimension of the matrix).
+        :param dimension: The number of cities.
         :param lower: Whether the matrix is lower triangular.
         :param diag: Whether the diagonal is included.
+        :return: None
         """
         self.distance_matrix = [[0] * dimension for _ in range(dimension)]
         value_index = 0
@@ -330,11 +348,20 @@ class TSPLIBParser(TSPLIBParserInterface):
         self._convert_matrix_to_integers()
 
     def _convert_matrix_to_integers(self) -> None:
-        """Convert all values in the distance matrix to integers."""
+        """
+        Convert all values in the distance matrix to integers.
+
+        :return: None
+        """
         self.distance_matrix = [[int(value) for value in row] for row in self.distance_matrix]
 
     def _unsupported_format(self) -> None:
-        """Handle unsupported formats."""
+        """
+        Raise an exception for an unsupported format.
+
+        :raises ValueError: Always raises an exception since the format is unsupported.
+        :return: None
+        """
         raise ValueError(f"Unsupported EDGE_WEIGHT_FORMAT: {self.edge_weight_format}")
 
     def get_field_value(self, field_name: str, optional: bool = False) -> str or None:
@@ -343,8 +370,7 @@ class TSPLIBParser(TSPLIBParserInterface):
 
         :param field_name: The name of the field to retrieve.
         :param optional: Whether the field is optional.
-        :return: The field value as a string or None if not found and optional is True.
-        :raises ValueError: If the field is required and not found.
+        :return: The field value as a string, or None if not found and optional is True.
         """
         for line in self.content.splitlines():
             if line.startswith(field_name):

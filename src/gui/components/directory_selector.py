@@ -1,9 +1,10 @@
 # src/gui/components/directory_selector.py
 
 from PySide6.QtWidgets import QFileDialog
-from src.config import get_path
-from src.utils.interfaces.directory_selector_interface import DirectorySelectorInterface
-from src.backend.components.tsplib_management.tsp_catalog import TSPCatalog
+
+from src.utils.path_config import get_path
+from src.interfaces.gui.components.directory_selector_interface import DirectorySelectorInterface
+from src.backend.components.tsp_management.tsp_catalog import TSPCatalog
 
 
 class DirectorySelector(DirectorySelectorInterface):
@@ -18,6 +19,8 @@ class DirectorySelector(DirectorySelectorInterface):
     def select_directory_and_load_files(self) -> None:
         """
         Opens a dialog to select a directory and automatically loads the .tsp files within it.
+
+        :return: None
         """
         file_dialog = QFileDialog()
 

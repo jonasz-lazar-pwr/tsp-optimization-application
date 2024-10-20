@@ -1,28 +1,30 @@
-# src/backend/components/tsplib_management/tsp_catalog.py
+# src/backend/components/tsp_management/tsp_catalog.py
 
 import os
 from typing import Optional, List
 
-from src.backend.components.tsplib_management.tsplib_parser import TSPLIBParser
-from src.utils.interfaces.tsp_catalog_interface import TSPCatalogInterface
-from src.backend.components.tsplib_management.tsp_file import TSPFile
+from src.backend.components.tsp_management.tsplib_parser import TSPLIBParser
+from src.backend.components.tsp_management.tsp_file import TSPFile
+from src.interfaces.backend.components.tsp_management.tsp_catalog_interface import TSPCatalogInterface
 
 
 class TSPCatalog(TSPCatalogInterface):
-    def __init__(self, optimal_results_path: str):
+    def __init__(self, optimal_results_path: str) -> None:
         """
-        Constructor for the TSPCatalog class.
+        Initializes the TSPCatalog class, which manages a collection of TSP files.
 
         :param optimal_results_path: Path to the JSON file containing optimal results for all problems.
+        :return: None
         """
-        self.tsp_files = []  # List of TSPFile objects
+        self.tsp_files = []
         self.optimal_results_path = optimal_results_path
 
     def load_files(self, directory_path: str) -> None:
         """
-        Load .tsp files from the specified directory.
+        Loads .tsp files from the specified directory and stores them in the catalog.
 
         :param directory_path: Path to the directory containing .tsp files.
+        :return: None
         """
         for filename in os.listdir(directory_path):
             if filename.endswith(".tsp"):
@@ -38,7 +40,9 @@ class TSPCatalog(TSPCatalogInterface):
 
     def print_all_metadata(self) -> None:
         """
-        Print metadata for all loaded TSP files.
+        Prints metadata for all loaded TSP files in the catalog.
+
+        :return: None
         """
         for tsp_file in self.tsp_files:
             print(f"Metadata for file {tsp_file.name}:")
@@ -49,10 +53,10 @@ class TSPCatalog(TSPCatalogInterface):
 
     def get_file_by_name(self, name: str) -> Optional[TSPFile]:
         """
-        Find a TSP file by its name.
+        Retrieves a TSP file by its name from the catalog.
 
-        :param name: Name of the .tsp file.
-        :return: The corresponding TSPFile object or None if not found.
+        :param name: The name of the .tsp file.
+        :return: The corresponding TSPFile object, or None if not found.
         """
         for tsp_file in self.tsp_files:
             if tsp_file.name == name:
@@ -60,24 +64,28 @@ class TSPCatalog(TSPCatalogInterface):
         return None
 
     def sort_by_dimension(self) -> None:
-        """Sort files by the number of cities (dimension)."""
+        """
+        Sorts the TSP files in the catalog by the number of cities (dimension).
+
+        :return: None
+        """
         self.tsp_files.sort(key=lambda file: file.dimension)
 
     def filter_by_edge_weight_type(self, edge_weight_type: str) -> List[TSPFile]:
         """
-        Filter files by the edge weight type.
+        Filters TSP files by the specified edge weight type.
 
-        :param edge_weight_type: The type of edge weights to filter by.
-        :return: A list of filtered TSPFile objects.
+        :param edge_weight_type: The edge weight type to filter by.
+        :return: A list of TSPFile objects with the specified edge weight type.
         """
         return [file for file in self.tsp_files if file.edge_weight_type == edge_weight_type]
 
     def load_distance_matrix_for_file(self, name: str) -> Optional[TSPFile]:
         """
-        Load the distance matrix for a specific file by its name.
+        Loads the distance matrix for a specified TSP file by its name.
 
         :param name: The name of the .tsp file.
-        :return: The TSPFile object with the loaded distance matrix or None if not found.
+        :return: The TSPFile object with the loaded distance matrix, or None if not found.
         """
         tsp_file = self.get_file_by_name(name)
         if tsp_file:
