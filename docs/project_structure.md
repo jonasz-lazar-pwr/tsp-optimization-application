@@ -1,65 +1,57 @@
-# Struktura projektu
+# Project structure
 
 ```bash
 tsp-optimization-application/
 │
 ├── src/     
-│   ├── main.py                            # Main application file
-│   ├── config.py                          # Application configuration  
+│   ├── main.py                                 # Main application file
 │   │       
-│   ├── algorithms/                        # Directory for algorithm implementations
-│   │   ├── python/                        # Algorithms in Python
-│   │   └── cpp/                           # Algorithms in C++
-│   │       ├── SA/                        # Simulated Annealing algorithm
-│   │       │   ├── SimulatedAnnealing.cpp
-│   │       │   └── SimulatedAnnealing.h
-│   │       ├── TS/                        # Tabu Search algorithm
-│   │       │   ├── TabuSearch.cpp
-│   │       │   └── TabuSearch.h
-│   │       └── bindings/                  # pybind11 bindings for C++ algorithms
-│   │           ├── SimulatedAnnealingBindings.cpp
-│   │           └── TabuSearchBindings.cpp
+│   ├── tsp_algorithms/                         # SA and TS algorithms in C++
+│   │   ├── bindings/                           # pybind11 bindings for C++ algorithms
+│   │   │   ├── SimulatedAnnealingBindings.cpp  # pybind11 bindings for SA
+│   │   │   └── TabuSearchBindings.cpp          # pybind11 bindings for TS
+│   │   │
+│   │   ├── sa/                                 # Simulated Annealing algorithm
+│   │   │   ├── enums/                          # Enumerations for SA
+│   │   │   ├── SimulatedAnnealing.cpp          # C++ implementation of SA
+│   │   │   └── SimulatedAnnealing.h            # Header file for SA
+│   │   │
+│   │   └── ts/                                 # Tabu Search algorithm
+│   │       ├── enums/                          # Enumerations for TS
+│   │       ├── TabuSearch.cpp                  # C++ implementation of TS
+│   │       └── TabuSearch.h                    # Header file for TS
 │   │
-│   ├── backend/                           # Backend of the application
-│   │   ├── components/                    # Backend components
-│   │   │   ├── threads/                   # Threads for algorithms
-│   │   │   │   └── algorithm_threads.py   # Algorithm threads management
-│   │   │   └── tsplib_management/         # TSPLIB file management
-│   │   │       ├── tsp_catalog.py         # Catalog management for TSPLIB files
-│   │   │       ├── tsplib_parser.py       # TSPLIB file parser
-│   │   │       └── tsp_file.py            # TSPLIB file handler
-│   │   └── task_manager.py                # Task management
+│   ├── backend/                                # Backend of the application
+│   │   ├── components/                         # Backend components
+│   │   │   ├── processes/                      # Processes for algorithm execution
+│   │   │   └── tsp_management/                 # TSPLIB file management
+│   │   └── task_manager.py                     # Task management
 │   │
-│   ├── gui/                               # GUI components
-│   │   ├── components/                    # Separate files for each GUI component
-│   │   │   └── directory_selector.py      # Directory selector for TSPLIB files
-│   │   └── main_window.py                 # Main window of the application
+│   ├── gui/                                    # GUI of the application
+│   │   ├── components/                         # GUI components
+│   │   │   └── plots/                          # Plotting components
+│   │   └── main_window.py                      # Main window of the application
 │   │
-│   └── utils/                             # Supporting utilities
-│       └── interfaces/                    # Interfaces for classes
+│   └── utils/                                  # Supporting utilities
+│       └── path_config.py                      # Path configuration
 │
-├── resources/                             # Project resources
-│   ├── tsplib/                            # TSPLIB files for testing
-│   ├── config/                            # Application configuration files
+├── data/                                       # Project data
+│   ├── tsplib/                                 # TSPLIB files for testing
+│   ├── config/                                 # Application configuration files
 │   │   └── settings.json
-│   ├── assets/                            # Icons, images, and text files
-│   └── metadata/                          # Project metadata
+│   ├── assets/                                 # Icons, images, and text files
+│   └── metadata/                               # Project metadata
 │       └── optimal_results.json
 │
-├── tests/                                 # Test suite
-│   ├── unit_tests/                        # Unit tests
-│   └── integration_tests/                 # Integration tests
+├── tests/                                      # Test suite
 │
-├── docs/                                  # Project documentation
-│   └── project_structure.md               # Documentation of project structure
+├── docs/                                       # Project documentation
+│   └── project_structure.md                    # Documentation of project structure
 │
-├── scripts/                               # Helper scripts for building, testing, etc.
-│   └── build.py                           # Script for building the project
-│
-├── CMakeLists.txt                 # CMake build file for C++ components
-├── requirements.txt               # List of Python dependencies (pip freeze)
-├── LICENSE                        # Project license
-├── .gitignore                     # Git ignore file
-├── .gitattributes                 # Git attributes file
-└── README.md                      # Project description
+├── CMakeLists.txt                              # CMake build file for C++ components
+├── requirements.txt                            # List of Python dependencies (pip freeze)
+├── LICENSE                                     # Project license
+├── .gitignore                                  # Git ignore file
+├── .gitattributes                              # Git attributes file
+└── README.md                                   # Project description
 ```
