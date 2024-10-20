@@ -1,7 +1,9 @@
-from pathlib import Path
+# src/utils/path_config.py
+
+import os
 
 # Global project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def get_path(relative_path: str) -> str:
     """
@@ -10,4 +12,4 @@ def get_path(relative_path: str) -> str:
     :param relative_path: Path relative to the project root.
     :return: Full string path to the file.
     """
-    return str(PROJECT_ROOT / relative_path)
+    return os.path.join(PROJECT_ROOT, relative_path)

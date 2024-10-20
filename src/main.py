@@ -2,12 +2,13 @@
 
 import sys
 from PySide6.QtWidgets import QApplication
-from src.backend.task_manager import TaskManager
-from src.gui.main_window import MainWindow
-from src.config import PROJECT_ROOT
+from src.utils.path_config import PROJECT_ROOT
 
 # Append the project directory to the Python path
-sys.path.append(str(PROJECT_ROOT))
+sys.path.append(PROJECT_ROOT)
+
+from src.backend.task_manager import TaskManager
+from src.gui.main_window import MainWindow
 
 
 def main():
