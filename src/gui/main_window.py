@@ -1,7 +1,11 @@
 # src/gui/main_window.py
 
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget, QComboBox
+from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QListView
+
 from src.backend.task_manager import TaskManager
+from src.gui.components.plots.cost_plot_widget import CostPlotWidget
+from src.gui.components.plots.city_map_widget import CityMapWidget
 
 
 class MainWindow(QMainWindow):
@@ -18,79 +22,212 @@ class MainWindow(QMainWindow):
         self.task_manager = task_manager
 
         # Podłączenie sygnałów TaskManagera do aktualizacji GUI
-        self.task_manager.solution_signal.connect(self.update_current_solution)
-        self.task_manager.result_signal.connect(self.update_result)
+        self.task_manager.current_data_signal_sa.connect(self.update_simulation_data_sa)
+        self.task_manager.current_data_signal_ts.connect(self.update_simulation_data_ts)
 
         # Layout setup
-        layout = QVBoxLayout()
+        self.layout = QVBoxLayout()
 
-        # Dodaj QComboBox do wyboru pliku TSP
-        self.file_selector = QComboBox()
-        self.file_selector.currentIndexChanged.connect(self.on_file_selection_change)
-        layout.addWidget(self.file_selector)
+        # Użycie QListView
+        self.file_list_view = QListView()
+        self.file_list_view.setModel(QStandardItemModel())
+        self.file_list_view.selectionModel().selectionChanged.connect(self.on_file_selection_change)
+        self.layout.addWidget(self.file_list_view)
 
         # Button to run the Simulated Annealing algorithm
-        self.run_button = QPushButton("Run Simulated Annealing")
-        self.run_button.clicked.connect(self.run_simulated_annealing)
-        layout.addWidget(self.run_button)
+        self.run_button_sa = QPushButton("Run SA")
+        self.run_button_sa.clicked.connect(lambda: self.run_single_algorithm("SA"))
+        self.layout.addWidget(self.run_button_sa)
+
+        # Button to run the Tabu Search algorithm
+        self.run_button_ts = QPushButton("Run TS")
+        self.run_button_ts.clicked.connect(lambda: self.run_single_algorithm("TS"))
+        self.layout.addWidget(self.run_button_ts)
+
+        # Button to run both algorithms
+        self.run_button_all = QPushButton("Run Both")
+        self.run_button_all.clicked.connect(self.run_both_algorithms)
+        self.layout.addWidget(self.run_button_all)
 
         # Button to select a directory with TSP files
         self.select_directory_button = QPushButton("Select TSP Directory")
         self.select_directory_button.clicked.connect(self.select_directory)
-        layout.addWidget(self.select_directory_button)
+        self.layout.addWidget(self.select_directory_button)
 
-        # Labels for displaying results
-        self.result_label = QLabel("Final result will be shown here")
-        layout.addWidget(self.result_label)
+        # Button to clear the plots
+        self.clear_button = QPushButton("Clear Plots")
+        self.clear_button.clicked.connect(self.clear_plots_partial)
+        self.clear_button.setVisible(False)  # Hide the button
+        self.layout.addWidget(self.clear_button)
 
-        self.current_solution_label = QLabel("Current solution will be shown here")
-        layout.addWidget(self.current_solution_label)
+        # Plot to display the cost function value over time for Simulated Annealing
+        self.cost_plot_widget_sa = CostPlotWidget(self)
+        self.cost_plot_widget_sa.setVisible(False)  # Hide the plot on start
+        self.layout.addWidget(self.cost_plot_widget_sa)
+
+        # Plot to display the route on the map for Simulated Annealing
+        self.city_map_widget_sa = CityMapWidget(self)
+        self.city_map_widget_sa.setVisible(False)  # Hide the plot on start
+        self.layout.addWidget(self.city_map_widget_sa)
+
+        # Plot to display the cost function value over time for Tabu Search
+        self.cost_plot_widget_ts = CostPlotWidget(self)
+        self.cost_plot_widget_ts.setVisible(False)  # Hide the plot on start
+        self.layout.addWidget(self.cost_plot_widget_ts)
+
+        # Plot to display the route on the map for Tabu Search
+        self.city_map_widget_ts = CityMapWidget(self)
+        self.city_map_widget_ts.setVisible(False)  # Hide the plot on start
+        self.layout.addWidget(self.city_map_widget_ts)
 
         # Central widget setup
         central_widget = QWidget()
-        central_widget.setLayout(layout)
+        central_widget.setLayout(self.layout)
         self.setCentralWidget(central_widget)
 
     def select_directory(self) -> None:
         """
-        Method for handling directory selection for TSP files.
+        Handles the directory selection and file loading.
         """
         self.task_manager.select_tsp_directory()
-        self.update_file_selector()
+        self.update_file_list()
 
-    def update_file_selector(self) -> None:
+    def update_file_list(self) -> None:
+        """
+        Updates the file selector with loaded TSP file names.
+        """
+        model = self.file_list_view.model()
+        model.clear()  # Wyczyść poprzednie elementy
+
         file_names = self.task_manager.get_loaded_file_names()
-        self.file_selector.clear()
-        self.file_selector.addItems(file_names)
+        for file_name in file_names:
+            item = QStandardItem(file_name)
+            model.appendRow(item)
 
     def on_file_selection_change(self) -> None:
-        selected_file = self.file_selector.currentText()
-        print(f"Selected file: {selected_file}")  # Debug print
+        selected_indexes = self.file_list_view.selectionModel().selectedIndexes()
+        if selected_indexes:
+            selected_file_name = selected_indexes[0].data()
+            self.load_selected_file(selected_file_name)
 
-    def run_simulated_annealing(self) -> None:
-        """
-        Method for handling the execution of the Simulated Annealing algorithm.
-        """
-        selected_file = self.file_selector.currentText()
-        if selected_file:
-            temperature = 10000.0
-            iterations = 100000
-            self.task_manager.start_simulated_annealing_for_file(selected_file, temperature, iterations)
-        else:
-            print("No file selected.")  # Debug print
+    def load_selected_file(self, file_name: str) -> None:
+        tsp_file = self.task_manager.catalog.get_file_by_name(file_name)
+        if tsp_file:
+            self.clear_button.setVisible(False)
 
-    def update_current_solution(self, solution: list[float]) -> None:
-        """
-        Updates the label displaying the current solution.
+            self.cost_plot_widget_sa.setVisible(False)
+            self.city_map_widget_sa.setVisible(False)
 
-        :param solution: A list representing the current solution.
-        """
-        self.current_solution_label.setText(f"Current solution: {solution}")
+            self.cost_plot_widget_ts.setVisible(False)
+            self.city_map_widget_ts.setVisible(False)
 
-    def update_result(self, result: float) -> None:
-        """
-        Updates the label displaying the final result.
+            if tsp_file.coordinates or tsp_file.display_coordinates:
+                self.clear_plots_all()
+                self.city_map_widget_sa.coordinates = tsp_file.coordinates or tsp_file.display_coordinates
+                self.city_map_widget_sa.set_city_positions()
+                self.city_map_widget_sa.setVisible(True)
 
-        :param result: The cost of the final solution.
+                self.city_map_widget_ts.coordinates = tsp_file.coordinates or tsp_file.display_coordinates
+                self.city_map_widget_ts.set_city_positions()
+                self.city_map_widget_ts.setVisible(True)
+
+            self.cost_plot_widget_sa.setVisible(True)
+            self.cost_plot_widget_ts.setVisible(True)
+            self.clear_button.setVisible(True)
+
+    def run_both_algorithms(self) -> None:
         """
-        self.result_label.setText(f"Final cost: {result}")
+        Handles starting both SA and TS algorithms for the selected file.
+        """
+        selected_indexes = self.file_list_view.selectionModel().selectedIndexes()
+        if selected_indexes:
+            selected_file_name = selected_indexes[0].data()
+            if selected_file_name:
+                self.clear_plots_partial()
+                # Przekazujemy konfigurację "SA + TS" i listę ["SA", "TS"]
+                self.task_manager.start_algorithm_for_file(["SA", "TS"], selected_file_name)
+
+    def run_single_algorithm(self, algorithm_name: str) -> None:
+        """
+        Handles starting a single algorithm for the selected file.
+        """
+        selected_indexes = self.file_list_view.selectionModel().selectedIndexes()
+        if selected_indexes:
+            selected_file_name = selected_indexes[0].data()
+            if selected_file_name:
+                self.clear_plots_partial()
+                # Przekazujemy konfigurację algorytmu ("SA" lub "TS") i odpowiednią listę
+                self.task_manager.start_algorithm_for_file([algorithm_name], selected_file_name)
+
+    def update_simulation_data(self, algorithm_name: str, elapsed_time: int, current_cost: int,
+                               current_solution: list[int]) -> None:
+        """
+        Updates the plot and label displaying the current cost, elapsed time, and the current solution (route) for the given algorithm.
+
+        :param algorithm_name: The name of the algorithm ("SA" or "TS").
+        :param elapsed_time: The current elapsed time in milliseconds.
+        :param current_cost: The current cost (objective function value).
+        :param current_solution: The current solution (list of cities in the current route).
+        """
+        if algorithm_name == "SA":
+            # Aktualizacja dla SA
+            if self.cost_plot_widget_sa.isVisible():
+                self.cost_plot_widget_sa.update_plot(elapsed_time, current_cost)
+            if self.city_map_widget_sa.isVisible():
+                self.city_map_widget_sa.update_route(current_solution)
+        elif algorithm_name == "TS":
+            # Aktualizacja dla TS
+            if self.cost_plot_widget_ts.isVisible():
+                self.cost_plot_widget_ts.update_plot(elapsed_time, current_cost)
+            if self.city_map_widget_ts.isVisible():
+                self.city_map_widget_ts.update_route(current_solution)
+
+    def update_simulation_data_sa(self, elapsed_time: int, current_cost: int, current_solution: list[int]) -> None:
+        """
+        Updates the plot and label displaying the current cost, elapsed time, and the current solution (route).
+
+        :param elapsed_time: The current elapsed time in milliseconds.
+        :param current_cost: The current cost (objective function value).
+        :param current_solution: The current solution (list of cities in the current route).
+        """
+        # Aktualizacja wykresu kosztów w czasie, jeśli widoczny
+        if self.cost_plot_widget_sa.isVisible():
+            self.cost_plot_widget_sa.update_plot(elapsed_time, current_cost)
+
+        # Aktualizacja trasy (permutacja miast) na mapie, jeśli widoczny
+        if self.city_map_widget_sa.isVisible():
+            self.city_map_widget_sa.update_route(current_solution)
+
+    def update_simulation_data_ts(self, elapsed_time: int, current_cost: int, current_solution: list[int]) -> None:
+        """
+        Updates the plot and label displaying the current cost, elapsed time, and the current solution (route) for TS.
+
+        :param elapsed_time: The current elapsed time in milliseconds.
+        :param current_cost: The current cost (objective function value).
+        :param current_solution: The current solution (list of cities in the current route).
+        """
+        # Aktualizacja wykresu kosztów dla Tabu Search, jeśli widoczny
+        if self.cost_plot_widget_ts.isVisible():
+            self.cost_plot_widget_ts.update_plot(elapsed_time, current_cost)
+
+        # Aktualizacja trasy na mapie dla Tabu Search, jeśli widoczny
+        if self.city_map_widget_ts.isVisible():
+            self.city_map_widget_ts.update_route(current_solution)
+
+    def clear_plots_all(self) -> None:
+        """
+        Czyści wszystkie wykresy (koszt, koordynaty oraz trasa miast).
+        """
+        self.cost_plot_widget_sa.clear()
+        self.city_map_widget_sa.clear_all()
+        self.cost_plot_widget_ts.clear()
+        self.city_map_widget_ts.clear_all()
+
+    def clear_plots_partial(self) -> None:
+        """
+        Czyści wykresy częściowo (koszt oraz trasa miast).
+        """
+        self.cost_plot_widget_sa.clear()
+        self.city_map_widget_sa.clear_route()
+        self.cost_plot_widget_ts.clear()
+        self.city_map_widget_ts.clear_route()
