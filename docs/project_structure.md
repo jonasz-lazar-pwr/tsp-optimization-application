@@ -32,6 +32,10 @@ tsp-optimization-application/
 │   │   │   └── plots/                          # Plotting components
 │   │   └── main_window.py                      # Main window of the application
 │   │
+│   ├── interfaces/                             # Interfaces for backend and GUI
+│   │   ├── backend/                            # Backend interfaces
+│   │   └── gui/                                # GUI interfaces
+│   │
 │   └── utils/                                  # Supporting utilities
 │       └── path_config.py                      # Path configuration
 │
