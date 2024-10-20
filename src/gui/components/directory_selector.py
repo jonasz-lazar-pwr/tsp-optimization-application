@@ -24,8 +24,8 @@ class DirectorySelector(DirectorySelectorInterface):
         """
         file_dialog = QFileDialog()
 
-        # Set the default path to the 'resources/tsplib' directory
-        default_directory = get_path('resources/tsplib')
+        # Set the default path to the 'data/tsplib' directory
+        default_directory = get_path('data/tsplib')
         file_dialog.setDirectory(default_directory)
 
         # Set the file mode to select directories only

@@ -9,8 +9,8 @@ from src.backend.components.tsp_management.tsplib_parser import TSPLIBParser
 from src.utils.path_config import get_path
 
 # Ścieżki do plików
-tsp_file_path = get_path("resources/tsplib/berlin52.tsp")
-optimal_results_path = get_path("resources/metadata/optimal_results.json")
+tsp_file_path = get_path("data/tsplib/berlin52.tsp")
+optimal_results_path = get_path("data/metadata/optimal_results.json")
 
 # Inicjalizacja parsera TSPLIB
 parser = TSPLIBParser()

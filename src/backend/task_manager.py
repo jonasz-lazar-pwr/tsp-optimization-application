@@ -22,7 +22,7 @@ class TaskManager(QObject):
         :return: None
         """
         super().__init__()
-        self.catalog = TSPCatalog("resources/metadata/optimal_results.json")
+        self.catalog = TSPCatalog("data/metadata/optimal_results.json")
         self.directory_selector = DirectorySelector(self.catalog)
         self.algorithms_manager_dict: Optional[dict[str, AlgorithmManager]] = None
 
