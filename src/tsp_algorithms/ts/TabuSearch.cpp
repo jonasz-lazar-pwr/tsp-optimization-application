@@ -1,34 +1,26 @@
 // src/algorithms/cpp/TS/TabuSearch.cpp
 
 #include "TabuSearch.h"
+#include "MoveTypeTS.h"
 #include "MoveHashUtils.h"
-#include <algorithm>
-#include <random>
+#include <nng/protocol/pair1/pair.h>
 #include <iostream>
-#include <numeric>
 #include <chrono>
-#include <map>
 #include <unordered_set>
+
 
 // --- Constructor ---
 /*
- * Constructor initializes the Tabu Search algorithm with the given parameters.
- * - tenure: the length of time a move stays on the Tabu List.
- * - dist_matrix: distance matrix between cities.
- * - move_type: either SWAP or 2-opt.
- * - duration_ms: the maximum allowed runtime in milliseconds.
- * - random_tenure_range: range for random tenure values (for stochastic TS).
- * - tenure_type: type of tenure (CONSTANT or RANDOM).
- * - limit_type: how to calculate the Tabu List size limit (e.g., N, SQRT(N)).
- * - custom_limit: custom size limit for the Tabu List.
- * - max_neighbors: max number of neighbors to generate.
- * - initial_solution_type: type of initial solution (RANDOM or GREEDY).
+ * Initializes the Tabu Search algorithm with the given parameters.
  */
-TabuSearch::TabuSearch(int tenure, const std::vector<std::vector<int>>& dist_matrix, MoveType move_type, int duration_ms,
-                       std::pair<int, int> random_tenure_range, TenureType tenure_type, TabuListLimitType limit_type,
-                       int custom_limit, int max_neighbors, InitialSolutionType initial_solution_type):
+TabuSearch::TabuSearch(int duration_ms, int port, const std::vector<std::vector<int>>& dist_matrix,
+    int tenure, std::pair<int, int> random_tenure_range, TenureType tenure_type,
+    TabuListLimitType limit_type, int custom_limit, int max_neighbors,
+    MoveTypeTS move_type, InitialSolutionTypeTS initial_solution_type):
+
+    max_duration(duration_ms), max_neighbors(max_neighbors),
     tabu_list(tenure, random_tenure_range, tenure_type, calculate_tabu_list_limit(limit_type, dist_matrix.size(), custom_limit)),
-    move_type(move_type), distances(dist_matrix), max_duration(duration_ms), max_neighbors(max_neighbors) {
+    move_type(move_type), distances(dist_matrix) {
 
     // Initialize the initial solution based on the specified type.
     initialize_solution(initial_solution_type);
@@ -38,20 +30,41 @@ TabuSearch::TabuSearch(int tenure, const std::vector<std::vector<int>>& dist_mat
     best_solution = current_solution;
     // Set the initial cost as the best cost.
     best_cost = current_cost;
+
+    // NNG socket initialization
+    if (nng_pair1_open(&sock) != 0) {
+        std::cout << "Failed to open NNG socket." << std::endl;
+    }
+
+    // Create the address using the specified port
+    std::string address = "tcp://127.0.0.1:" + std::to_string(port);
+    if (nng_dial(sock, address.c_str(), NULL, 0) != 0) {
+        std::cout << "Failed to connect NNG socket." << std::endl;
+    }
+}
+
+// --- Destructor ---
+/*
+ * Destroys the Tabu Search algorithm and closes the NNG socket.
+ */
+TabuSearch::~TabuSearch() {
+    nng_close(sock);
 }
 
 // --- Main Algorithm Loop ---
 /*
  * The main function that runs the Tabu Search algorithm.
- * Iterates through neighborhoods, evaluating solutions until termination.
+ * Iterates through neighborhoods, evaluating solutions until termination (time).
  */
 void TabuSearch::run() {
     // Start the timer to measure the algorithm's duration.
     auto start_time = std::chrono::steady_clock::now();
+    auto last_send_time = start_time;
 
     // Main loop until the algorithm exceeds the maximum duration
-    while (!should_terminate(start_time, max_duration)) {
-        tabu_list.decrement_tenure(); // Decrease tenures of all tabu moves.
+    while (!should_terminate(start_time)) {
+        // Decrease tenures of all tabu moves.
+        tabu_list.decrement_tenure();
 
         // Generate a neighborhood of possible moves (Swap or 2-opt).
         std::vector<Neighbor> neighborhood = generate_neighborhood(current_solution);
@@ -60,28 +73,69 @@ void TabuSearch::run() {
         for (Neighbor &neighbor : neighborhood) {
             // Process the neighbor based on the move type (Swap or 2-opt).
             if (std::holds_alternative<std::pair<int, int>>(neighbor.move)) {
-                if (process_swap_move(neighbor, tabu_list, current_cost, current_solution, best_cost, best_solution)) {
+                if (process_swap_move(neighbor)) {
+
+                    // Send the current data, passing start_time and last_send_time by reference
+                    send_data(start_time, last_send_time);
                     break;
                 }
             } else if (std::holds_alternative<std::pair<std::pair<int, int>, std::pair<int, int>>>(neighbor.move)) {
-                if (process_2opt_move(neighbor, tabu_list, current_cost, current_solution, best_cost, best_solution)) {
+                if (process_2opt_move(neighbor)) {
+
+                    // Send the current data, passing start_time and last_send_time by reference
+                    send_data(start_time, last_send_time);
                     break;
                 }
             }
         }
     }
+    // Send the final data to indicate the end of the algorithm
+    std::string eof_message = "EOF";
+    nng_send(sock, const_cast<char*>(eof_message.c_str()), eof_message.size(), 0);
 
-    std::cout << "Finished with best cost: " << best_cost << std::endl;
+    std::cout << "Finished TS with best cost: " << best_cost << std::endl;
+}
+
+// --- Data Sending ---
+/*
+ * Sends the current data (elapsed time, current cost and solution).
+ */
+void TabuSearch::send_data(const std::chrono::steady_clock::time_point& start_time,
+                                   std::chrono::steady_clock::time_point& last_send_time) {
+    // Check if it is time to send the data
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_since_last_send = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_send_time).count();
+
+    // Send the data every millisecond
+    if (elapsed_since_last_send >= 1) {
+        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
+        last_send_time = current_time;
+
+        // Convert the current solution to a string
+        std::stringstream solution_stream;
+        for (size_t i = 0; i < current_solution.size(); ++i) {
+            solution_stream << current_solution[i];
+            if (i != current_solution.size() - 1) {
+                solution_stream << ",";
+            }
+        }
+
+        // Send the data through the NNG socket
+        std::string message = std::to_string(elapsed_time) + " " + std::to_string(current_cost) + " " + solution_stream.str();
+        if (nng_send(sock, const_cast<char*>(message.c_str()), message.size(), 0) != 0) {
+            std::cerr << "Error: Failed to send message: " << message << std::endl;
+        }
+    }
 }
 
 // --- Solution Initialization ---
 /*
  * Initializes the solution based on the specified type (e.g., Random or Greedy).
  */
-void TabuSearch::initialize_solution(InitialSolutionType initial_solution_type) {
-    if (initial_solution_type == InitialSolutionType::RANDOM) {
+void TabuSearch::initialize_solution(InitialSolutionTypeTS initial_solution_type) {
+    if (initial_solution_type == InitialSolutionTypeTS::RANDOM) {
         initialize_random_solution();
-    } else if (initial_solution_type == InitialSolutionType::GREEDY) {
+    } else if (initial_solution_type == InitialSolutionTypeTS::GREEDY) {
         initialize_greedy_solution();
     }
 }
@@ -154,9 +208,9 @@ std::vector<Neighbor> TabuSearch::generate_neighborhood(const std::vector<int>& 
     std::multimap<int, Neighbor> sorted_neighborhood; // Sorted neighborhood by cost
 
     // Generate the neighborhood based on the move type (Swap or 2-opt).
-    if (move_type == MoveType::SWAP) {
+    if (move_type == MoveTypeTS::SWAP) {
         generate_swap_neighborhood(current_solution, sorted_neighborhood);
-    } else if (move_type == MoveType::OPT_2) {
+    } else if (move_type == MoveTypeTS::OPT_2) {
         generate_2opt_neighborhood(current_solution, sorted_neighborhood);
     }
 
@@ -265,12 +319,11 @@ void TabuSearch::add_neighbor(std::multimap<int, Neighbor>& sorted_neighborhood,
 /*
  * Checks if the algorithm should terminate based on elapsed time.
  */
-bool TabuSearch::should_terminate(const std::chrono::steady_clock::time_point& start_time, int max_duration) {
+bool TabuSearch::should_terminate(const std::chrono::steady_clock::time_point& start_time) {
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
 
     if (elapsed_time >= max_duration) {
-        std::cout << "Elapsed time: " << elapsed_time << " ms, stopping the algorithm." << std::endl;
         return true;
     }
     return false;
@@ -281,7 +334,7 @@ bool TabuSearch::should_terminate(const std::chrono::steady_clock::time_point& s
  * Process a Swap move: checks if it's tabu and if aspiration criteria are met.
  * Updates the current solution and Tabu List if the move is valid.
  */
-bool TabuSearch::process_swap_move(Neighbor& neighbor, TabuList& tabu_list, int& current_cost, std::vector<int>& current_solution, int& best_cost, std::vector<int>& best_solution) {
+bool TabuSearch::process_swap_move(Neighbor& neighbor) {
     auto [city1, city2] = std::get<std::pair<int, int>>(neighbor.move);
 
     // If the move is not tabu or meets aspiration criteria, apply it.
@@ -292,7 +345,7 @@ bool TabuSearch::process_swap_move(Neighbor& neighbor, TabuList& tabu_list, int&
         tabu_list.add_move(city1, city2);
 
         // Update the best solution if the new one is better.
-        update_best_solution(current_solution, current_cost, best_solution, best_cost);
+        update_best_solution();
         return true; // Found a better solution, break the loop.
     }
     return false; // No better solution found
@@ -303,7 +356,7 @@ bool TabuSearch::process_swap_move(Neighbor& neighbor, TabuList& tabu_list, int&
  * Process a 2-opt move: checks if it's tabu and if aspiration criteria are met.
  * Updates the current solution and Tabu List if the move is valid.
  */
-bool TabuSearch::process_2opt_move(Neighbor& neighbor, TabuList& tabu_list, int& current_cost, std::vector<int>& current_solution, int& best_cost, std::vector<int>& best_solution) {
+bool TabuSearch::process_2opt_move(Neighbor& neighbor) {
     auto [edge1, edge2] = std::get<std::pair<std::pair<int, int>, std::pair<int, int>>>(neighbor.move);
 
     bool edge1_is_tabu = tabu_list.is_tabu(edge1.first, edge1.second);
@@ -323,7 +376,7 @@ bool TabuSearch::process_2opt_move(Neighbor& neighbor, TabuList& tabu_list, int&
         }
 
         // Update the best solution if the new one is better.
-        update_best_solution(current_solution, current_cost, best_solution, best_cost);
+        update_best_solution();
         return true; // Found a better solution, break the loop.
     }
     return false; // No better solution found
@@ -333,11 +386,11 @@ bool TabuSearch::process_2opt_move(Neighbor& neighbor, TabuList& tabu_list, int&
 /*
  * Updates the best solution and best cost if the current solution is better.
  */
-void TabuSearch::update_best_solution(const std::vector<int>& current_solution, int current_cost, std::vector<int>& best_solution, int& best_cost) {
+void TabuSearch::update_best_solution() {
     if (current_cost < best_cost) {
         best_solution = current_solution;
         best_cost = current_cost;
-        std::cout << "New best solution: " << best_cost << std::endl;
+        // std::cout << "New best solution: " << best_cost << std::endl;
     }
 }
 
