@@ -23,18 +23,18 @@ tsp-optimization-application/
 │   │
 │   ├── backend/                                # Backend of the application
 │   │   ├── components/                         # Backend components
-│   │   │   ├── processes/                      # Processes for algorithm execution
-│   │   │   └── tsp_management/                 # TSPLIB file management
+│   │   ├── configs/                            # Configuration files
+│   │   ├── processes/                          # Processes for algorithm execution
+│   │   ├── tsp_management/                     # TSPLIB file management
 │   │   └── task_manager.py                     # Task management
 │   │
 │   ├── gui/                                    # GUI of the application
-│   │   ├── components/                         # GUI components
-│   │   │   └── plots/                          # Plotting components
+│   │   ├── dialogs/                            # Dialogs for the application
+│   │   ├── panels/                             # Panels for the application
+│   │   ├── widgets/                            # Widgets for the application
+│   │   │   ├── management/                     # Widgets for management of settings and files
+│   │   │   └── visualization/                  # Widgets for visualization of results
 │   │   └── main_window.py                      # Main window of the application
-│   │
-│   ├── interfaces/                             # Interfaces for backend and GUI
-│   │   ├── backend/                            # Backend interfaces
-│   │   └── gui/                                # GUI interfaces
 │   │
 │   └── utils/                                  # Supporting utilities
 │       └── path_config.py                      # Path configuration
@@ -46,8 +46,6 @@ tsp-optimization-application/
 │   ├── assets/                                 # Icons, images, and text files
 │   └── metadata/                               # Project metadata
 │       └── optimal_results.json
-│
-├── tests/                                      # Test suite
 │
 ├── docs/                                       # Project documentation
 │   └── project_structure.md                    # Documentation of project structure
