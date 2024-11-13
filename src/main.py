@@ -12,19 +12,29 @@ from src.gui.main_window import MainWindow
 
 
 def main():
-    # Inicjalizacja QApplication
-    app = QApplication(sys.argv)
+    """
+    Main function to initialize and launch the TSP Optimization application.
 
-    # Inicjalizacja TaskManager
-    task_manager = TaskManager()
+    - Initializes QApplication to manage the GUI application.
+    - Creates TaskManager to manage backend tasks and algorithms.
+    - Initializes MainWindow with the TaskManager instance, connecting the GUI with backend processes.
+    - Shows the main window and starts the application's event loop.
 
-    # Inicjalizacja GUI z podłączonym TaskManagerem
-    main_window = MainWindow(task_manager)
+    :return: None
+    """
+    # Initialize QApplication
+    app: QApplication = QApplication(sys.argv)
 
-    # Uruchomienie GUI
+    # Initialize TaskManager for managing algorithms and tasks
+    task_manager: TaskManager = TaskManager()
+
+    # Initialize MainWindow with the TaskManager instance
+    main_window: MainWindow = MainWindow(task_manager)
+
+    # Show the main window GUI
     main_window.show()
 
-    # Uruchomienie głównej pętli zdarzeń aplikacji
+    # Start the main event loop of the application
     sys.exit(app.exec())
 
 if __name__ == "__main__":
