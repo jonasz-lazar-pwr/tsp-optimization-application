@@ -2,32 +2,36 @@
 
 from typing import Optional, Type, Callable
 from multiprocessing import Queue, Process, Barrier
-from src.backend.components.processes.algorithm_process import AlgorithmProcess
-from src.interfaces.backend.components.algorithm_manager_interface import AlgorithmManagerInterface
+
+from src.backend.processes.base_algorithm_process import BaseAlgorithmProcess
 
 
-class AlgorithmManager(AlgorithmManagerInterface):
-    def __init__(self, algorithm_process_class: Type[AlgorithmProcess], distance_matrix: list[list[int]],
-                 start_barrier: Barrier, port: int) -> None:
+class AlgorithmManager:
+    def __init__(self, algorithm_process_class: Type[BaseAlgorithmProcess], port: int, data_frequency: int,
+                 distance_matrix: list[list[int]], start_barrier: Barrier, config_params) -> None:
         """
-        Initializes the manager (handler) for an algorithm process.
+        Initializes the manager (handler) for an algorithm process, setting up required resources
+        such as the inter-process communication queue, process instances, and synchronization barriers.
 
         :param algorithm_process_class: The class used to create the algorithm process.
+        :param port: The communication port for socket communication.
+        :param data_frequency: The frequency for data updates.
         :param distance_matrix: The distance matrix for the TSP problem.
-        :param start_barrier: The barrier to synchronize the start of processes.
-        :param port: The port used for NNG socket communication between processes.
+        :param start_barrier: The barrier for synchronizing the start of processes.
+        :param config_params: Configuration parameters for the algorithm.
         :return: None
         """
-        self.queue = Queue()
-        self.algorithm_process_instance = algorithm_process_class(distance_matrix, self.queue, start_barrier, port)
+        self.queue: Queue = Queue()
+        self.algorithm_process_instance: BaseAlgorithmProcess = algorithm_process_class(
+            port, data_frequency, distance_matrix, self.queue, start_barrier, config_params
+        )
         self.receiver_process: Optional[Process] = None
         self.algorithm_process: Optional[Process] = None
-        self.is_receiving = False
-        self.port = port
+        self.is_receiving: bool = False
 
     def start(self) -> None:
         """
-        Starts the algorithm and receiver processes.
+        Starts the algorithm and receiver processes, enabling data communication and processing.
 
         :return: None
         """
@@ -36,9 +40,9 @@ class AlgorithmManager(AlgorithmManagerInterface):
 
     def check_queue(self, handle_data_callback: Callable) -> None:
         """
-        Checks the queue for new data and processes it using a callback function.
+        Checks the queue for new data messages and processes each message using a callback function.
 
-        :param handle_data_callback: The callback function to handle the data.
+        :param handle_data_callback: The callback function to handle the data received in the queue.
         :return: None
         """
         while not self.queue.empty():
@@ -51,7 +55,7 @@ class AlgorithmManager(AlgorithmManagerInterface):
 
     def terminate_processes(self) -> None:
         """
-        Terminates the receiver and main algorithm processes.
+        Terminates both the receiver and algorithm processes if they are active.
 
         :return: None
         """
@@ -60,19 +64,21 @@ class AlgorithmManager(AlgorithmManagerInterface):
         if self.algorithm_process and self.algorithm_process.is_alive():
             self.algorithm_process.terminate()
 
-    def parse_message(self, data: str) -> tuple[int, int, list[int]]:
+    def parse_message(self, data: str) -> tuple[int, int, int, list[int]]:
         """
-        Parses the incoming data message.
+        Parses an incoming data message string to extract algorithm metrics such as elapsed time,
+        best cost, current cost, and the current solution route.
 
-        :param data: The data string containing elapsed time, current cost, and current solution.
-        :return: A tuple containing the elapsed time, current cost, and current solution.
+        :param data: The data string containing elapsed time, best cost, current cost, and current solution route.
+        :return: A tuple containing the parsed values for elapsed time, best cost, current cost, and the current solution route.
         """
         try:
-            parts = data.split(' ', 2)
+            parts = data.split(' ', 3)
             elapsed_time = int(parts[0])
-            current_cost = int(parts[1])
-            current_solution = list(map(int, parts[2].split(',')))
-            return elapsed_time, current_cost, current_solution
+            best_cost = int(parts[1])
+            current_cost = int(parts[2])
+            current_solution = list(map(int, parts[3].split(',')))
+            return elapsed_time, best_cost, current_cost, current_solution
         except (ValueError, IndexError) as e:
             print(f"Error parsing message: {data}, {e}")
-            return 0, 0, []
+            return 0, 0, 0, []
