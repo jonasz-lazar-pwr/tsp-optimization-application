@@ -1,15 +1,13 @@
-# src/backend/components/tsp_management/tsp_parser.py
+# src/backend/tsp_management/tsp_parser.py
 
 import math
 from typing import List, Tuple, Optional
 
-from src.interfaces.backend.components.tsp_management.tsplib_parser_interface import TSPLIBParserInterface
 
-
-class TSPLIBParser(TSPLIBParserInterface):
+class TSPLIBParser:
     def __init__(self) -> None:
         """
-        Constructor for the TSPLIBParser class.
+        Initializes the TSPLIBParser class.
 
         Initializes the parser with default values for file path, coordinates,
         distance matrix, edge weight type, edge weight format, and file content.
@@ -25,15 +23,15 @@ class TSPLIBParser(TSPLIBParserInterface):
 
     def validate_file(self, file_path: str) -> None:
         """
-        Validate if the file exists and has the correct structure.
+        Validates if the specified file exists and has the correct structure.
 
         :param file_path: Path to the .tsp file to validate.
         :return: None
+        :raises FileNotFoundError: If the file does not exist.
+        :raises ValueError: If required fields are missing or contain invalid values.
         """
         self.file_path = file_path
         required_fields = ["NAME", "TYPE", "DIMENSION", "EDGE_WEIGHT_TYPE"]
-
-        # Supported EDGE_WEIGHT_TYPE values
         supported_types = ["EXPLICIT", "EUC_2D", "CEIL_2D", "ATT", "GEO"]
 
         try:
@@ -71,12 +69,17 @@ class TSPLIBParser(TSPLIBParserInterface):
 
     def _load_coordinates(self) -> None:
         """
-        Load city coordinates from the NODE_COORD_SECTION.
+        Loads city coordinates from the NODE_COORD_SECTION in the .tsp file content.
 
         :return: None
         """
         self.coordinates = []
         in_node_coord_section = False
+
+        # Check if NODE_COORD_SECTION exists
+        if "NODE_COORD_SECTION" not in self.content:
+            raise ValueError("NODE_COORD_SECTION is missing in the file content.")
+
         for line in self.content.splitlines():
             if "NODE_COORD_SECTION" in line:
                 in_node_coord_section = True
@@ -85,6 +88,7 @@ class TSPLIBParser(TSPLIBParserInterface):
                 if line.strip() == "EOF":
                     break
                 parts = line.split()
+                # Verify that line has the correct format
                 if len(parts) >= 3:
                     city_id, x, y = int(parts[0]), float(parts[1]), float(parts[2])
                     self.coordinates.append((x, y))

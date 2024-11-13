@@ -1,40 +1,39 @@
-# src/backend/components/tsp_management/tsp_file.py
+# src/backend/tsp_management/tsp_file.py
 
-import json
 import os
-from typing import Optional, List, Dict
+import json
+from typing import Optional, List, Dict, Tuple
+from src.backend.tsp_management.tsplib_parser import TSPLIBParser
 
-from src.backend.components.tsp_management.tsplib_parser import TSPLIBParser
-from src.interfaces.backend.components.tsp_management.tsp_file_interface import TSPFileInterface
 
-
-class TSPFile(TSPFileInterface):
+class TSPFile:
     def __init__(self, file_path:  str, optimal_results_path: str, parser: TSPLIBParser) -> None:
         """
-        Initializes a TSPFile instance, representing a Traveling Salesman Problem instance.
+        Initializes a TSPFile instance, representing a Traveling Salesman Problem instance with metadata and distance
+        information.
 
         :param file_path: Path to the .tsp file.
         :param optimal_results_path: Path to the JSON file containing optimal results.
         :param parser: Instance of TSPLIBParser injected through constructor.
         """
-        self.file_path = file_path
-        self.name = None
-        self.type = None
-        self.dimension = None
-        self.edge_weight_type = None
-        self.edge_weight_format = None
-        self.coordinates = []
-        self.display_coordinates = []
-        self.distance_matrix = []
-        self.has_loaded = False
-        self.optimal_result = None
-        self.optimal_results_path = optimal_results_path
-        self.parser = parser
+        self.file_path: str = file_path
+        self.name: Optional[str] = None
+        self.type: Optional[str] = None
+        self.dimension: Optional[int] = None
+        self.edge_weight_type: Optional[str] = None
+        self.edge_weight_format: Optional[str] = None
+        self.coordinates: List[Tuple[float, float]] = []
+        self.display_coordinates: List[Tuple[float, float]] = []
+        self.distance_matrix: List[List[int]] = []
+        self.has_loaded: bool = False
+        self.optimal_result: Optional[int] = None
+        self.optimal_results_path: str = optimal_results_path
+        self.parser: TSPLIBParser = parser
 
     def load_metadata(self) -> None:
         """
-        Loads metadata from the .tsp file using the injected TSPLIBParser.
-        Checks if the edge weight type is EXPLICIT and automatically loads the distance matrix if it is.
+        Loads metadata from the .tsp file using the injected TSPLIBParser. If the edge weight type is "EXPLICIT",
+        the distance matrix is loaded automatically. Also loads display coordinates if available.
 
         :return: None
         """
@@ -50,9 +49,11 @@ class TSPFile(TSPFileInterface):
         if self.edge_weight_type != "EXPLICIT":
             self.coordinates = self.parser.coordinates
 
+        # Load distance matrix if the file has EDGE_WEIGHT_SECTION
         if self.edge_weight_type == "EXPLICIT":
             self.load_distance_matrix()
 
+        # Load display coordinates if the file has DISPLAY_DATA_SECTION
         display_data_type = self.parser.get_field_value("DISPLAY_DATA_TYPE", optional=True)
         if display_data_type == "TWOD_DISPLAY":
             self.load_display_coordinates()
@@ -60,8 +61,12 @@ class TSPFile(TSPFileInterface):
     def load_optimal_results(self) -> None:
         """
         Loads the optimal result for the problem from a local JSON file, handling errors appropriately.
+        If the JSON file does not contain optimal data for this instance, sets optimal_result to None.
 
         :return: None
+        :raises FileNotFoundError: If the optimal results file cannot be found.
+        :raises json.JSONDecodeError: If the JSON file is improperly formatted.
+        :raises ValueError: If the JSON content does not match the expected structure.
         """
         try:
             # Ensure the JSON file exists
@@ -96,7 +101,7 @@ class TSPFile(TSPFileInterface):
 
     def load_display_coordinates(self) -> None:
         """
-        Loads coordinates from the DISPLAY_DATA_SECTION for visualization.
+        Loads coordinates from the DISPLAY_DATA_SECTION for visualization purposes.
 
         :return: None
         """
@@ -104,7 +109,7 @@ class TSPFile(TSPFileInterface):
 
     def load_distance_matrix(self) -> None:
         """
-        Loads the distance matrix from the file if not already loaded.
+        Loads the distance matrix using the parser if it has not already been loaded.
 
         :return: None
         """
@@ -117,7 +122,7 @@ class TSPFile(TSPFileInterface):
 
     def get_distance_matrix(self) -> Optional[List[List[int]]]:
         """
-        Get the distance matrix if it's already loaded.
+        Retrieves the distance matrix if it has been loaded.
 
         :return: The distance matrix or None if it hasn't been loaded yet.
         """
@@ -131,7 +136,7 @@ class TSPFile(TSPFileInterface):
         """
         Exports the TSPFile data as a dictionary.
 
-        :return: A dictionary with all relevant file information.
+        :return: A dictionary containing the file's metadata, coordinates, and distance matrix.
         """
         return {
             'file_path': self.file_path,
