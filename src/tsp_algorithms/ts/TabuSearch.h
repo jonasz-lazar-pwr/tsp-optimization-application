@@ -5,10 +5,10 @@
 
 #include "TabuList.h"
 #include "Neighbor.h"
-#include "MoveTypeTS.h"
-#include "TenureType.h"
-#include "TabuListLimitType.h"
-#include "InitialSolutionTypeTS.h"
+#include "NeighborSelectionMethodTS.h"
+#include "TenureTypeTS.h"
+#include "TabuListLimitMethodTS.h"
+#include "InitialSolutionMethodTS.h"
 #include <nng/nng.h>
 
 
@@ -16,10 +16,10 @@
 class TabuSearch {
 public:
     // Constructor with parameters including various options for the Tabu Search algorithm
-    TabuSearch(int duration_ms, int port, const std::vector<std::vector<int>>& dist_matrix,
-               int tenure, std::pair<int, int> random_tenure_range, TenureType tenure_type,
-               TabuListLimitType limit_type, int custom_limit, int max_neighbors,
-               MoveTypeTS move_type, InitialSolutionTypeTS initial_solution_type);
+    TabuSearch(int port, int data_frequency_ms, const std::vector<std::vector<int>>& dist_matrix, int duration_ms,
+                InitialSolutionMethodTS initial_solution_method, NeighborSelectionMethodTS neighbor_selection_method,
+                int max_neighbors, TabuListLimitMethodTS tabu_list_limit_method, int tabu_list_custom_limit,
+                TenureTypeTS tenure_type, int constant_tenure, std::pair<int, int> random_tenure_range);
 
     // Destructor for the Tabu Search algorithm
     ~TabuSearch();
@@ -32,9 +32,13 @@ private:
     // Sends the current data (elapsed time and current cost) to the server
     void send_data(const std::chrono::steady_clock::time_point &start_time, std::chrono::steady_clock::time_point &last_send_time);
 
+    // --- Best Solution Saving ---
+    // Saves the best solution to a file
+    void save_best_solution_to_file();
+
     // --- Solution Initialization ---
     // Initializes the solution based on the specified type (e.g., Random or Greedy)
-    void initialize_solution(InitialSolutionTypeTS initial_solution_type);
+    void initialize_solution(InitialSolutionMethodTS initial_solution_method);
 
     // Initializes a random solution (random permutation of cities)
     void initialize_random_solution();
@@ -80,12 +84,13 @@ private:
     bool aspiration_criteria(int current_cost);
 
     // --- Tabu List Limit Management ---
-    // Calculates the limit for the Tabu List based on the type (e.g., N, 3N, sqrt(N), or custom limit)
-    int calculate_tabu_list_limit(TabuListLimitType limit_type, int num_cities, int custom_limit) const;
+    // Calculates the limit for the Tabu List based on the type (e.g., N, 3N, sqrt(N), or tabu_list_custom_limit)
+    int calculate_tabu_list_limit(TabuListLimitMethodTS tabu_list_limit_method, int num_cities, int tabu_list_custom_limit) const;
 
     // --- NNG Socket ---
-    nng_socket sock{};                  // Socket for sending data to the receiver
+    nng_socket sock{};                  // Socket for sendning data to the receiver
     int port{};                         // Port number for the receiver
+    int data_frequency;                 // Frequency of sending data to the server in milliseconds
 
     // --- Member Variables ---
     const int max_duration;             // Maximum allowed duration in milliseconds
@@ -95,7 +100,7 @@ private:
     TabuList tabu_list;
 
     // Selected method for type of move
-    MoveTypeTS move_type;
+    NeighborSelectionMethodTS neighbor_selection_method;
 
     // Distance matrix between cities
     const std::vector<std::vector<int>> distances;

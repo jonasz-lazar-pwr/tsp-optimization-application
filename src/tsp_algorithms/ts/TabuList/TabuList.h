@@ -1,9 +1,9 @@
-// src/algorithms/cpp/TS/TabuList/TabuList.h
+// src/tsp_algorithms/ts/TabuList/TabuList.h
 
 #ifndef TABU_LIST_H
 #define TABU_LIST_H
 
-#include "TenureType.h"
+#include "TenureTypeTS.h"
 #include <random>
 #include <map>
 
@@ -12,8 +12,8 @@
 class TabuList {
 public:
     // Constructor with parameters for the Tabu List
-    explicit TabuList(int tenure, std::pair<int, int> random_tenure_range = {0, 0},
-                      TenureType tenure_type = TenureType::CONSTANT, int limit = 0);
+    explicit TabuList(int constant_tenure, std::pair<int, int> random_tenure_range,
+                      TenureTypeTS tenure_type, int limit);
 
     // Add a move to the Tabu List
     void add_move(int city1, int city2);
@@ -26,9 +26,9 @@ public:
 
 private:
     std::multimap<int, std::pair<int, int>> tabu_map;  // Stores moves with their tenure
-    int tenure;                                        // Default tenure duration
+    int constant_tenure;                               // Constant tenure duration
     std::pair<int, int> random_tenure_range;           // Range for random tenure
-    TenureType tenure_type;                            // Type of tenure (CONSTANT or RANDOM)
+    TenureTypeTS tenure_type;                          // Type of tenure (CONSTANT or RANDOM)
     std::mt19937 rng;                                  // Random number generator
     int limit;                                         // Maximum size of the Tabu List
 

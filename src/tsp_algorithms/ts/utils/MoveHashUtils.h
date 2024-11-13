@@ -1,10 +1,11 @@
-// src/algorithms/cpp/TS/utils/MoveHashUtils.h
+// src/tsp_algorithms/ts/utils/MoveHashUtils.h
 
 #ifndef MOVE_HASH_UTILS_H
 #define MOVE_HASH_UTILS_H
 
 #include <tuple>
 #include <functional>
+
 
 // Hash function for std::pair, used for Swap moves
 struct hash_pair {

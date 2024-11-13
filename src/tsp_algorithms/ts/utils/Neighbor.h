@@ -1,10 +1,11 @@
-// src/algorithms/cpp/TS/utils/Neighbor.h
+// src/tsp_algorithms/ts/utils/Neighbor.h
 
 #ifndef NEIGHBOR_H
 #define NEIGHBOR_H
 
 #include <vector>
 #include <variant>
+
 
 // A struct representing a neighbor solution and the move (either Swap or 2-opt) that generated it
 struct Neighbor {

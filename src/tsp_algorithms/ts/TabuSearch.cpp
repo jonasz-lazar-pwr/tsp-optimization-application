@@ -1,29 +1,32 @@
-// src/algorithms/cpp/TS/TabuSearch.cpp
+// src/tsp_algorithms/ts/TabuSearch.cpp
 
 #include "TabuSearch.h"
-#include "MoveTypeTS.h"
+#include "NeighborSelectionMethodTS.h"
 #include "MoveHashUtils.h"
 #include <nng/protocol/pair1/pair.h>
 #include <iostream>
 #include <chrono>
 #include <unordered_set>
+#include <fstream>
+#include <vector>
+#include <string>
 
 
 // --- Constructor ---
 /*
  * Initializes the Tabu Search algorithm with the given parameters.
  */
-TabuSearch::TabuSearch(int duration_ms, int port, const std::vector<std::vector<int>>& dist_matrix,
-    int tenure, std::pair<int, int> random_tenure_range, TenureType tenure_type,
-    TabuListLimitType limit_type, int custom_limit, int max_neighbors,
-    MoveTypeTS move_type, InitialSolutionTypeTS initial_solution_type):
+TabuSearch::TabuSearch(int port, int data_frequency_ms, const std::vector<std::vector<int>>& dist_matrix, int duration_ms,
+    InitialSolutionMethodTS initial_solution_method, NeighborSelectionMethodTS neighbor_selection_method,
+    int max_neighbors, TabuListLimitMethodTS tabu_list_limit_method, int tabu_list_custom_limit,
+    TenureTypeTS tenure_type, int constant_tenure, std::pair<int, int> random_tenure_range):
 
-    max_duration(duration_ms), max_neighbors(max_neighbors),
-    tabu_list(tenure, random_tenure_range, tenure_type, calculate_tabu_list_limit(limit_type, dist_matrix.size(), custom_limit)),
-    move_type(move_type), distances(dist_matrix) {
+    max_duration(duration_ms), data_frequency(data_frequency_ms), max_neighbors(max_neighbors),
+    tabu_list(constant_tenure, random_tenure_range, tenure_type, calculate_tabu_list_limit(tabu_list_limit_method, dist_matrix.size(), tabu_list_custom_limit)),
+    neighbor_selection_method(neighbor_selection_method), distances(dist_matrix) {
 
     // Initialize the initial solution based on the specified type.
-    initialize_solution(initial_solution_type);
+    initialize_solution(initial_solution_method);
     // Calculate the cost of the initial solution.
     current_cost = calculate_cost(current_solution);
     // Set the initial solution as the best one.
@@ -93,7 +96,7 @@ void TabuSearch::run() {
     std::string eof_message = "EOF";
     nng_send(sock, const_cast<char*>(eof_message.c_str()), eof_message.size(), 0);
 
-    std::cout << "Finished TS with best cost: " << best_cost << std::endl;
+    save_best_solution_to_file();
 }
 
 // --- Data Sending ---
@@ -106,8 +109,8 @@ void TabuSearch::send_data(const std::chrono::steady_clock::time_point& start_ti
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed_since_last_send = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_send_time).count();
 
-    // Send the data every millisecond
-    if (elapsed_since_last_send >= 1) {
+    // Send the data if the elapsed time is greater or equal to the data frequency
+    if (elapsed_since_last_send >= data_frequency) {
         auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
         last_send_time = current_time;
 
@@ -121,10 +124,29 @@ void TabuSearch::send_data(const std::chrono::steady_clock::time_point& start_ti
         }
 
         // Send the data through the NNG socket
-        std::string message = std::to_string(elapsed_time) + " " + std::to_string(current_cost) + " " + solution_stream.str();
+        std::string message = std::to_string(elapsed_time) + " " + std::to_string(best_cost) + " " + std::to_string(current_cost) + " " + solution_stream.str();
         if (nng_send(sock, const_cast<char*>(message.c_str()), message.size(), 0) != 0) {
             std::cerr << "Error: Failed to send message: " << message << std::endl;
         }
+    }
+}
+
+// --- Best Solution Saving ---
+/*
+ * Saves the best solution to a file.
+ * Each city is written on a separate line, followed by the "EOF" marker.
+ */
+void TabuSearch::save_best_solution_to_file() {
+    std::string filename = "data/best_solutions/best_solution_ts.txt";
+    std::ofstream file(filename);
+    if (file.is_open()) {
+        for (int city : best_solution) {
+            file << city << "\n";
+        }
+        file << "EOF" << std::endl;  // Znacznik końca trasy
+        file.close();
+    } else {
+        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
     }
 }
 
@@ -132,10 +154,10 @@ void TabuSearch::send_data(const std::chrono::steady_clock::time_point& start_ti
 /*
  * Initializes the solution based on the specified type (e.g., Random or Greedy).
  */
-void TabuSearch::initialize_solution(InitialSolutionTypeTS initial_solution_type) {
-    if (initial_solution_type == InitialSolutionTypeTS::RANDOM) {
+void TabuSearch::initialize_solution(InitialSolutionMethodTS initial_solution_method) {
+    if (initial_solution_method == InitialSolutionMethodTS::RANDOM) {
         initialize_random_solution();
-    } else if (initial_solution_type == InitialSolutionTypeTS::GREEDY) {
+    } else if (initial_solution_method == InitialSolutionMethodTS::GREEDY) {
         initialize_greedy_solution();
     }
 }
@@ -208,9 +230,9 @@ std::vector<Neighbor> TabuSearch::generate_neighborhood(const std::vector<int>& 
     std::multimap<int, Neighbor> sorted_neighborhood; // Sorted neighborhood by cost
 
     // Generate the neighborhood based on the move type (Swap or 2-opt).
-    if (move_type == MoveTypeTS::SWAP) {
+    if (neighbor_selection_method == NeighborSelectionMethodTS::SWAP) {
         generate_swap_neighborhood(current_solution, sorted_neighborhood);
-    } else if (move_type == MoveTypeTS::OPT_2) {
+    } else if (neighbor_selection_method == NeighborSelectionMethodTS::OPT_2) {
         generate_2opt_neighborhood(current_solution, sorted_neighborhood);
     }
 
@@ -406,18 +428,18 @@ bool TabuSearch::aspiration_criteria(int current_cost) {
 /*
  * Calculates the Tabu List size limit based on the specified limit type.
  */
-int TabuSearch::calculate_tabu_list_limit(TabuListLimitType limit_type, int num_cities, int custom_limit) const {
-    switch (limit_type) {
-        case TabuListLimitType::N:
+int TabuSearch::calculate_tabu_list_limit(TabuListLimitMethodTS tabu_list_limit_method, int num_cities, int tabu_list_custom_limit) const {
+    switch (tabu_list_limit_method) {
+        case TabuListLimitMethodTS::N:
             return num_cities;
-        case TabuListLimitType::SQRT_N:
+        case TabuListLimitMethodTS::SQRT_N:
             return static_cast<int>(std::ceil(std::sqrt(num_cities)));
-        case TabuListLimitType::THREE_N:
+        case TabuListLimitMethodTS::THREE_N:
             return 3 * num_cities;
-        case TabuListLimitType::N_SQUARED:
+        case TabuListLimitMethodTS::N_SQUARED:
             return num_cities * num_cities;
-        case TabuListLimitType::CUSTOM:
-            return custom_limit; // Custom value provided by the user
+        case TabuListLimitMethodTS::CUSTOM:
+            return tabu_list_custom_limit; // Custom value provided by the user
         default:
             return num_cities; // Default value is number of cities
     }

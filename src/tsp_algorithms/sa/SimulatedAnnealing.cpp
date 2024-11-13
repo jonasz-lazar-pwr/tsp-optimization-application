@@ -1,25 +1,28 @@
-// src/tsp_algorithms/ts/TabuSearch.cpp
+// src/tsp_algorithms/sa/SimulatedAnnealing.cpp
 
 #include "SimulatedAnnealing.h"
 #include <nng/protocol/pair1/pair.h>
 #include <random>
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <vector>
+#include <string>
 
 
 // --- Constructor ---
 /*
  * Initializes the Simulated Annealing algorithm with the given parameters.
  */
-SimulatedAnnealing::SimulatedAnnealing(int duration_ms, int port, const std::vector<std::vector<int>>& dist_matrix,
-    InitialTempType initial_temp_type, TempDecayType temp_decay_type, double alpha, double beta,
-    int steps_per_temp, MoveTypeSA move_type, InitialSolutionTypeSA initial_solution_type):
+SimulatedAnnealing::SimulatedAnnealing(int port, int data_frequency_ms, const std::vector<std::vector<int>>& dist_matrix, int duration_ms,
+    InitialTempMethodSA initial_temp_method, InitialSolutionMethodSA initial_solution_method,
+    NeighborSelectionMethodSA neighbor_selection_method, int steps_per_temp, double alpha):
 
-    max_duration(duration_ms), alpha(alpha), beta(beta), steps_per_temp(steps_per_temp),
-    temp_decay_type(temp_decay_type), move_type(move_type), distances(dist_matrix) {
+    max_duration(duration_ms), data_frequency(data_frequency_ms), alpha(alpha), steps_per_temp(steps_per_temp),
+    neighbor_selection_method(neighbor_selection_method), distances(dist_matrix) {
 
     // Initialize the initial solution based on the specified type.
-    initialize_solution(initial_solution_type);
+    initialize_solution(initial_solution_method);
     // Calculate the cost of the initial solution.
     current_cost = calculate_cost(current_solution);
     // Set the current solution as the best one.
@@ -27,7 +30,7 @@ SimulatedAnnealing::SimulatedAnnealing(int duration_ms, int port, const std::vec
     // Set the current cost as the best one.
     best_cost = current_cost;
     // Initialize the temperature based on the specified method.
-    initialize_temperature(initial_temp_type);
+    initialize_temperature(initial_temp_method);
 
     // NNG socket initialization
     if (nng_pair1_open(&sock) != 0) {
@@ -82,14 +85,14 @@ void SimulatedAnnealing::run() {
             // Send the current data, passing start_time and last_send_time by reference
             send_data(start_time, last_send_time);
         }
-        // Apply the temperature decay after a certain number of steps
-        apply_temperature_decay();
+        // Apply the temperature cooling after a certain number of steps
+        apply_temperature_cooling();
     }
     // Send the final data to indicate the end of the algorithm
     std::string eof_message = "EOF";
     nng_send(sock, const_cast<char*>(eof_message.c_str()), eof_message.size(), 0);
 
-    std::cout << "Finished SA with best cost: " << best_cost << std::endl;
+    save_best_solution_to_file();
 }
 
 // --- Data Sending ---
@@ -102,8 +105,8 @@ void SimulatedAnnealing::send_data(const std::chrono::steady_clock::time_point& 
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed_since_last_send = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_send_time).count();
 
-    // Send the data every millisecond
-    if (elapsed_since_last_send >= 1) {
+    // Send the data if the elapsed time is greater or equal to the data frequency
+    if (elapsed_since_last_send >= data_frequency) {
         auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
         last_send_time = current_time;
 
@@ -117,10 +120,29 @@ void SimulatedAnnealing::send_data(const std::chrono::steady_clock::time_point& 
         }
 
         // Send the data through the NNG socket
-        std::string message = std::to_string(elapsed_time) + " " + std::to_string(current_cost) + " " + solution_stream.str();
+        std::string message = std::to_string(elapsed_time) + " " + std::to_string(best_cost) + " " + std::to_string(current_cost) + " " + solution_stream.str();
         if (nng_send(sock, const_cast<char*>(message.c_str()), message.size(), 0) != 0) {
             std::cerr << "Error: Failed to send message: " << message << std::endl;
         }
+    }
+}
+
+// --- Best Solution Saving ---
+/*
+ * Saves the best solution to a file.
+ * Each city is written on a separate line, followed by the "EOF" marker.
+ */
+void SimulatedAnnealing::save_best_solution_to_file() {
+    std::string filename = "data/best_solutions/best_solution_sa.txt";
+    std::ofstream file(filename);
+    if (file.is_open()) {
+        for (int city : best_solution) {
+            file << city << "\n";
+        }
+        file << "EOF" << std::endl;  // Znacznik końca trasy
+        file.close();
+    } else {
+        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
     }
 }
 
@@ -128,10 +150,10 @@ void SimulatedAnnealing::send_data(const std::chrono::steady_clock::time_point& 
 /*
  * Initializes the solution based on the specified type (e.g., Random or Greedy).
  */
-void SimulatedAnnealing::initialize_solution(InitialSolutionTypeSA initial_solution_type) {
-    if (initial_solution_type == InitialSolutionTypeSA::RANDOM) {
+void SimulatedAnnealing::initialize_solution(InitialSolutionMethodSA initial_solution_method) {
+    if (initial_solution_method == InitialSolutionMethodSA::RANDOM) {
         initialize_random_solution();
-    } else if (initial_solution_type == InitialSolutionTypeSA::GREEDY) {
+    } else if (initial_solution_method == InitialSolutionMethodSA::GREEDY) {
         initialize_greedy_solution();
     }
 }
@@ -186,15 +208,15 @@ void SimulatedAnnealing::initialize_greedy_solution() {
 /*
  * Initializes the temperature based on the selected method.
  */
-void SimulatedAnnealing::initialize_temperature(InitialTempType initial_temp_type) {
-    switch (initial_temp_type) {
-        case InitialTempType::AVG:
+void SimulatedAnnealing::initialize_temperature(InitialTempMethodSA initial_temp_method) {
+    switch (initial_temp_method) {
+        case InitialTempMethodSA::AVG:
             temperature = init_temp_avg_distance();
         break;
-        case InitialTempType::MAX:
+        case InitialTempMethodSA::MAX:
             temperature = init_temp_max_distance();
         break;
-        case InitialTempType::SAMPLING:
+        case InitialTempMethodSA::SAMPLING:
             temperature = init_temp_sampling();
         break;
     }
@@ -290,17 +312,17 @@ std::vector<int> SimulatedAnnealing::generate_neighbor(const std::vector<int>& s
         j = generate_random_number(0, solution.size() - 1);
     } while (i == j);
 
-    switch (move_type) {
-        case MoveTypeSA::SWAP:
+    switch (neighbor_selection_method) {
+        case NeighborSelectionMethodSA::SWAP:
             std::swap(new_solution[i], new_solution[j]);
         break;
-        case MoveTypeSA::INSERT: {
+        case NeighborSelectionMethodSA::INSERT: {
             int temp = new_solution[i];
             new_solution.erase(new_solution.begin() + i);
             new_solution.insert(new_solution.begin() + j, temp);
             break;
         }
-        case MoveTypeSA::INVERT:
+        case NeighborSelectionMethodSA::INVERT:
             if (i > j) std::swap(i, j);
         std::reverse(new_solution.begin() + i, new_solution.begin() + j + 1);
         break;
@@ -308,22 +330,12 @@ std::vector<int> SimulatedAnnealing::generate_neighbor(const std::vector<int>& s
     return new_solution;
 }
 
-// --- Temperature Decay ---
+// --- Temperature Cooling ---
 /*
- * Applies the temperature decay based on the selected decay method.
+ * Applies the temperature cooling schedule to decrease the temperature
  */
-void SimulatedAnnealing::apply_temperature_decay() {
-    switch (temp_decay_type) {
-        case TempDecayType::GEO:
-            temperature *= alpha;
-        break;
-        case TempDecayType::LOG:
-            // temperature /= std::log(2.0 + current_iteration);
-                break;
-        case TempDecayType::LINE:
-            temperature -= beta * temperature;
-        break;
-    }
+void SimulatedAnnealing::apply_temperature_cooling() {
+    temperature *= alpha;
 }
 
 // --- Random Helpers ---

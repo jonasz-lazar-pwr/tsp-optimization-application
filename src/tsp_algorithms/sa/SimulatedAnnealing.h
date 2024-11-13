@@ -3,10 +3,9 @@
 #ifndef SIMULATED_ANNEALING_H
 #define SIMULATED_ANNEALING_H
 
-#include "InitialSolutionTypeSA.h"
-#include "InitialTempType.h"
-#include "MoveTypeSA.h"
-#include "TempDecayType.h"
+#include "InitialSolutionMethodSA.h"
+#include "InitialTempMethodSA.h"
+#include "NeighborSelectionMethodSA.h"
 #include <vector>
 #include <nng/nng.h>
 
@@ -15,9 +14,9 @@
 class SimulatedAnnealing {
 public:
     // Constructor for the Simulated Annealing algorithm
-    SimulatedAnnealing(int duration_ms, int port, const std::vector<std::vector<int>>& dist_matrix,
-                       InitialTempType initial_temp_type, TempDecayType temp_decay_type, double alpha, double beta,
-                       int steps_per_temp, MoveTypeSA move_type, InitialSolutionTypeSA initial_solution_type);
+    SimulatedAnnealing(int port, int data_frequency_ms, const std::vector<std::vector<int>>& dist_matrix, int duration_ms,
+                       InitialTempMethodSA initial_temp_method, InitialSolutionMethodSA initial_solution_method,
+                       NeighborSelectionMethodSA neighbor_selection_method, int steps_per_temp, double alpha);
 
     // Destructor for the Simulated Annealing algorithm
     ~SimulatedAnnealing();
@@ -30,9 +29,13 @@ private:
     // Sends the current data (elapsed time and current cost) to the server
     void send_data(const std::chrono::steady_clock::time_point &start_time, std::chrono::steady_clock::time_point &last_send_time);
 
+    // --- Best Solution Saving ---
+    // Saves the best solution to a file.
+    void save_best_solution_to_file();
+
     // --- Solution Initialization ---
     // Initializes the solution based on the specified type (e.g., Random or Greedy)
-    void initialize_solution(InitialSolutionTypeSA initial_solution_type);
+    void initialize_solution(InitialSolutionMethodSA initial_solution_type);
 
     // Initializes a random solution (random permutation of cities)
     void initialize_random_solution();
@@ -42,7 +45,7 @@ private:
 
     // --- Temperature Initialization ---
     // Initializes the temperature
-    void initialize_temperature(InitialTempType initial_temp_type);
+    void initialize_temperature(InitialTempMethodSA initial_temp_type);
 
     // Initializes the temperature based on the average distance
     double init_temp_avg_distance();
@@ -67,9 +70,9 @@ private:
     // Generates a neighbor solution based on the selected method (Swap, Insert, Invert)
     std::vector<int> generate_neighbor(const std::vector<int>& solution);
 
-    // --- Temperature Decay ---
-    // Applies the temperature decay based on the selected method (Geometric, Linear, Logarithmic)
-    void apply_temperature_decay();
+    // --- Temperature Cooling ---
+    // Applies the temperature cooling schedule to decrease the temperature
+    void apply_temperature_cooling();
 
     // --- Random Number Generation Helpers ---
     // Generates a random integer number in the range [min, max]
@@ -81,19 +84,16 @@ private:
     // --- NNG Socket ---
     nng_socket sock{};                  // Socket for sending data to the receiver
     int port{};                         // Port number for the receiver
+    int data_frequency;                 // Frequency of sending data to the server in milliseconds
 
     // --- Member Variables ---
     double temperature{};               // Current temperature
     const int max_duration;             // Maximum allowed duration in milliseconds
     const double alpha;                 // Parameter for geometric decay
-    const double beta;                  // Parameter for linear decay
     const int steps_per_temp;           // Steps to perform at each temperature level
 
-    // Selected method for temperature decay
-    const TempDecayType temp_decay_type;
-
     // Selected method for type of move
-    const MoveTypeSA move_type;
+    const NeighborSelectionMethodSA neighbor_selection_method;
 
     // Distance matrix between cities
     const std::vector<std::vector<int>> distances;

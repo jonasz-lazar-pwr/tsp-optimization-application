@@ -1,4 +1,4 @@
-// src/algorithms/cpp/TS/TabuList/TabuList.cpp
+// src/tsp_algorithms/ts/TabuList/TabuList.cpp
 
 #include "TabuList.h"
 
@@ -7,8 +7,8 @@
 /*
  * Initializes the Tabu List with the given tenure, random tenure range, tenure type, and limit.
  */
-TabuList::TabuList(int tenure, std::pair<int, int> random_tenure_range, TenureType tenure_type, int limit):
-    tenure(tenure), random_tenure_range(random_tenure_range),
+TabuList::TabuList(int constant_tenure, std::pair<int, int> random_tenure_range, TenureTypeTS tenure_type, int limit):
+    constant_tenure(constant_tenure), random_tenure_range(random_tenure_range),
     tenure_type(tenure_type), rng(std::random_device{}()), limit(limit) {}
 
 // --- Get Tenure ---
@@ -16,11 +16,11 @@ TabuList::TabuList(int tenure, std::pair<int, int> random_tenure_range, TenureTy
  * Returns the tenure value, either constant or random based on the tenure type.
  */
 int TabuList::get_tenure() {
-    if (tenure_type == TenureType::RANDOM) {
+    if (tenure_type == TenureTypeTS::RANDOM) {
         std::uniform_int_distribution<int> dist(random_tenure_range.first, random_tenure_range.second);
         return dist(rng);
     }
-    return tenure;
+    return constant_tenure;
 }
 
 // --- Enforce Limit ---

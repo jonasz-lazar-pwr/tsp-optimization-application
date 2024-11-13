@@ -1,10 +1,11 @@
-// src/algorithms/cpp/TS/enums/TabuListLimitType.h
+// src/tsp_algorithms/ts/enums/TabuListLimitMethodTS.h
 
-#ifndef TABU_LIST_LIMIT_TYPE_H
-#define TABU_LIST_LIMIT_TYPE_H
+#ifndef TABULISTLIMITMETHODTS_H
+#define TABULISTLIMITMETHODTS_H
+
 
 // Enum defining the method to calculate Tabu List limit
-enum class TabuListLimitType {
+enum class TabuListLimitMethodTS {
     N,          // Limit is n (number of cities)
     SQRT_N,     // Limit is sqrt(n)
     THREE_N,    // Limit is 3n
@@ -12,4 +13,4 @@ enum class TabuListLimitType {
     CUSTOM      // User-defined limit
 };
 
-#endif // TABU_LIST_LIMIT_TYPE_H
+#endif // TABULISTLIMITMETHODTS_H

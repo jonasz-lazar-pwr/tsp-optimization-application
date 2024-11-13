@@ -33,22 +33,21 @@ include_directories(${CMAKE_SOURCE_DIR}/src/tsp_algorithms/ts/utils)
 pybind11_add_module(SimulatedAnnealing
         src/tsp_algorithms/sa/SimulatedAnnealing.cpp
         src/tsp_algorithms/bindings/SimulatedAnnealingBindings.cpp
-        src/tsp_algorithms/sa/enums/InitialTempType.h
-        src/tsp_algorithms/sa/enums/TempDecayType.h
-        src/tsp_algorithms/sa/enums/MoveTypeSA.h
-        src/tsp_algorithms/sa/enums/InitialSolutionTypeSA.h)
+        src/tsp_algorithms/sa/enums/InitialTempMethodSA.h
+        src/tsp_algorithms/sa/enums/InitialSolutionMethodSA.h
+        src/tsp_algorithms/sa/enums/NeighborSelectionMethodSA.h)
 
 # Add the pybind11 module for the Tabu Search files
 pybind11_add_module(TabuSearch
         src/tsp_algorithms/ts/TabuSearch.cpp
         src/tsp_algorithms/ts/TabuList/TabuList.cpp
-        src/tsp_algorithms/ts/enums/MoveTypeTS.h
-        src/tsp_algorithms/ts/enums/TenureType.h
-        src/tsp_algorithms/ts/enums/TabuListLimitType.h
-        src/tsp_algorithms/ts/enums/InitialSolutionTypeTS.h
+        src/tsp_algorithms/bindings/TabuSearchBindings.cpp
+        src/tsp_algorithms/ts/enums/InitialSolutionMethodTS.h
+        src/tsp_algorithms/ts/enums/NeighborSelectionMethodTS.h
+        src/tsp_algorithms/ts/enums/TabuListLimitMethodTS.h
+        src/tsp_algorithms/ts/enums/TenureTypeTS.h
         src/tsp_algorithms/ts/utils/MoveHashUtils.h
-        src/tsp_algorithms/ts/utils/Neighbor.h
-        src/tsp_algorithms/bindings/TabuSearchBindings.cpp)
+        src/tsp_algorithms/ts/utils/Neighbor.h)
 
 # Link NNG to the target libraries
 target_link_libraries(SimulatedAnnealing PRIVATE nng)
