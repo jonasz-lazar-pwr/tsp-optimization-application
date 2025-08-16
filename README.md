@@ -1,5 +1,7 @@
 # Application for comparing simulated annealing and tabu search algorithms for the TSP problem
 
+[![DOI](https://zenodo.org/badge/867092648.svg)](https://doi.org/10.5281/zenodo.16886919)
+
 ## About The Project
 This project focuses on solving the **Travelling Salesman Problem (TSP)** using two metaheuristic algorithms: **Simulated Annealing (SA)** and **Tabu Search (TS)**. It includes a desktop application with a user-friendly graphical interface for configuring, running, and comparing these algorithms. Users can monitor results in real time and generate detailed reports after simulations.
 
@@ -9,12 +11,8 @@ Key features include:
 - Visualizing solutions and cost evolution in real time.
 - Generating reports summarizing results.
 
----
-
 ## Application Interface
 ![Application Interface](assets/screenshots/app_interface.png)
-
----
 
 ## Getting Started on macOS
 
@@ -59,7 +57,11 @@ Key features include:
     python src/main.py
     ```
 
----
-
 ## Author and License
-This project was developed by Jonasz Lazar as part of his engineering thesis at the Wrocław University of Science and Technology. Distributed under the MIT License. For more information, see the [LICENSE](LICENSE) file.
+
+This project was developed by **Jonasz Lazar** as part of his engineering thesis at the **Wrocław University of Science and Technology**.
+
+- Thesis DOI: [10.5281/zenodo.16886710](https://doi.org/10.5281/zenodo.16886710)  
+- Code DOI: [10.5281/zenodo.16886920](https://doi.org/10.5281/zenodo.16886920)  
+
+Distributed under the **MIT License**.mFor more information, see the [LICENSE](LICENSE) file.
